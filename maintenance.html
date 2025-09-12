@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manutenção - VemPraFonteSP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: white;
+            overflow-x: hidden;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            min-height: 100vh;
+            width: 100vw;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: visible;
+            padding: 3rem 0;
+        }
+
+        /* Partículas de fundo */
+        .particles {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(239, 68, 68, 0.2);
+            border-radius: 50%;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); opacity: 0.3; }
+            50% { transform: translateY(-20px) scale(1.2); opacity: 0.8; }
+        }
+
+        /* Gradiente de fundo */
+        .gradient-bg {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, #111827 0%, #0a0a0a 50%, #000000 100%);
+            opacity: 0.8;
+        }
+
+        /* Efeito de luz */
+        .light-effect {
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 384px;
+            height: 384px;
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(48px);
+        }
+
+        /* Conteúdo principal */
+        .content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 1rem 2rem;
+            width: 100%;
+            max-width: 100%;
+            overflow: visible;
+        }
+
+        /* Ícone de manutenção */
+        .maintenance-icon {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .icon-wrapper {
+            padding: 1.5rem;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 50%;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            animation: iconPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes iconPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .icon {
+            width: 64px;
+            height: 64px;
+            color: #f87171;
+        }
+
+        /* Título principal */
+        .main-title {
+            font-size: 3.5rem;
+            line-height: 1.1;
+            font-weight: 900;
+            background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.5rem;
+            animation: titleGlow 2s ease-in-out infinite alternate;
+            word-break: break-word;
+            overflow: visible;
+            white-space: nowrap;
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            width: 100%;
+            padding: 0.2em 0;
+        }
+
+        @keyframes titleGlow {
+            0% { filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.3)); }
+            100% { filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.6)); }
+        }
+
+        /* Título secundário */
+        .subtitle {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1rem;
+            animation: slideInUp 0.8s ease-out 0.2s both;
+        }
+
+        /* Descrição */
+        .description {
+            font-size: 1.125rem;
+            color: #d1d5db;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+            animation: slideInUp 0.8s ease-out 0.4s both;
+            white-space: normal;
+        }
+
+        .highlight {
+            color: #f87171;
+            font-weight: 600;
+        }
+
+        /* Botões */
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+            animation: slideInUp 0.8s ease-out 0.6s both;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            padding: 1rem 2rem;
+            border-radius: 1rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            transform: scale(1);
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            box-shadow: 0 10px 25px rgba(239, 68, 68, 0.25);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            box-shadow: 0 20px 40px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(31, 41, 55, 0.5);
+            color: #d1d5db;
+            border: 1px solid #374151;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(55, 65, 81, 0.7);
+            color: white;
+        }
+
+        /* Links úteis */
+        .useful-links {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(55, 65, 81, 0.5);
+            animation: fadeIn 0.8s ease-out 1s both;
+        }
+
+        .links-text {
+            color: #9ca3af;
+            margin-bottom: 1rem;
+        }
+
+        .links-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .link {
+            color: #f87171;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .link:hover {
+            color: #fca5a5;
+        }
+
+        .separator {
+            color: #4b5563;
+        }
+
+        /* Efeito de brilho */
+        .shine-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.5), transparent);
+            animation: shine 3s linear infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Animações */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Responsividade */
+        @media (min-width: 640px) {
+            .main-title {
+                font-size: 5rem;
+            }
+            
+            .subtitle {
+                font-size: 2.5rem;
+            }
+            
+            .description {
+                font-size: 1.25rem;
+            }
+            
+            .buttons {
+                flex-direction: row;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .main-title {
+                font-size: 6rem;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .main-title {
+                font-size: 7rem;
+            }
+        }
+
+        @media (min-width: 1280px) {
+            .main-title {
+                font-size: 8rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .main-title {
+                font-size: 2.5rem;
+            }
+            
+            .content {
+                padding: 0 0.5rem;
+            }
+        }
+
+        /* Ícone SVG inline */
+        .wrench-icon {
+            fill: currentColor;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Partículas de fundo -->
+        <div class="particles" id="particles"></div>
+        
+        <!-- Gradiente de fundo -->
+        <div class="gradient-bg"></div>
+        
+        <!-- Efeito de luz -->
+        <div class="light-effect"></div>
+        
+        <!-- Efeito de brilho -->
+        <div class="shine-effect"></div>
+        
+        <!-- Conteúdo principal -->
+        <div class="content">
+            <!-- Ícone de manutenção -->
+            <div class="maintenance-icon">
+                <div class="icon-wrapper">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path class="wrench-icon" d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Título principal -->
+            <h1 class="main-title">MANUTENÇÃO</h1>
+
+            <!-- Título secundário -->
+            <h2 class="subtitle">Estamos melhorando o site!</h2>
+
+            <!-- Descrição -->
+            <p class="description">
+                Estamos trabalhando duro para trazer uma experiência ainda melhor para você.<br>
+                Nosso time está <span class="highlight">otimizando</span> tudo para que você tenha<br>
+                acesso aos melhores tênis do mercado.
+            </p>
+
+            <!-- Botões -->
+            <div class="buttons">
+                <!-- Botão principal - Voltar mais tarde -->
+                <button class="btn btn-primary" onclick="refreshPage()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 4v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M23 20v-6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Tentar Novamente
+                </button>
+
+                <!-- Botão secundário - Contato -->
+                <button class="btn btn-secondary" onclick="openWhatsApp()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Entrar em Contato
+                </button>
+            </div>
+
+            <!-- Links úteis -->
+            <div class="useful-links">
+                <p class="links-text">Enquanto isso, acompanhe nossas redes:</p>
+                <div class="links-container">
+                    <a href="#" class="link" onclick="openInstagram()">Instagram</a>
+                    <span class="separator">•</span>
+                    <a href="https://wa.me/5511939025934" class="link" target="_blank">WhatsApp</a>
+                    <span class="separator">•</span>
+                    <a href="mailto:contato@vemprafontesp.com.br" class="link">E-mail</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Criar partículas dinâmicas
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 50;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                // Posição aleatória
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                
+                // Tamanho aleatório
+                const size = Math.random() * 4 + 2;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                // Delay aleatório para animação
+                particle.style.animationDelay = Math.random() * 2 + 's';
+                particle.style.animationDuration = (3 + Math.random() * 2) + 's';
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Funções dos botões
+        function refreshPage() {
+            window.location.reload();
+        }
+
+        function openWhatsApp() {
+            const message = encodeURIComponent('Olá! Vi que o site está em manutenção. Quando estará funcionando novamente?');
+            window.open(`https://wa.me/5511939025934?text=${message}`, '_blank');
+        }
+
+        function openInstagram() {
+            window.open('https://instagram.com/vemprafontesp', '_blank');
+        }
+
+        // Efeito de digitação no título
+        function typeWriter(element, text, speed = 100) {
+            let i = 0;
+            element.innerHTML = '';
+            
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                }
+            }
+            
+            type();
+        }
+
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            createParticles();
+            
+            // Adicionar efeito de hover nos botões
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(button => {
+                button.addEventListener('mouseenter', function() {
+                    this.style.transform = 'scale(1.05) translateY(-2px)';
+                });
+                
+                button.addEventListener('mouseleave', function() {
+                    this.style.transform = 'scale(1) translateY(0)';
+                });
+            });
+
+            // Adicionar efeito de parallax suave no scroll
+            window.addEventListener('scroll', function() {
+                const scrolled = window.pageYOffset;
+                const parallax = document.querySelector('.light-effect');
+                const speed = scrolled * 0.5;
+                parallax.style.transform = `translate(-50%, -50%) translateY(${speed}px)`;
+            });
+        });
+
+        // Auto-refresh a cada 30 segundos
+        setInterval(function() {
+            // Verificar se o site voltou (opcional)
+            fetch(window.location.origin)
+                .then(response => {
+                    if (response.ok) {
+                        window.location.reload();
+                    }
+                })
+                .catch(() => {
+                    // Site ainda em manutenção
+                });
+        }, 30000);
+    </script>
+</body>
+</html>
