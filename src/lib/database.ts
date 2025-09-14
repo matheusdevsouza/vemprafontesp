@@ -3,6 +3,15 @@
 // Nunca crie pool ou conexão dentro de handlers/rotas! Use sempre o pool exportado deste módulo.
 
 import mysql from 'mysql2/promise'
+import { 
+  encryptPersonalData, 
+  decryptPersonalData, 
+  encryptOrderData, 
+  decryptOrderData,
+  hashUserId,
+  verifyUserIdHash,
+  ENCRYPTION_ENABLED
+} from './encryption'
 
 interface DBConfig {
   host: string
@@ -479,34 +488,82 @@ export interface CreateUserData {
 }
 
 export async function createUser(userData: CreateUserData): Promise<any> {
+  // Criptografar dados sensíveis antes de salvar
+  const encryptedData = encryptPersonalData(userData);
+  
   const sql = `
     INSERT INTO users (name, email, password, phone, cpf, birth_date, gender, email_verified_at, is_active)
     VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 1)
   `;
   
   const params = [
-    userData.name,
-    userData.email,
-    userData.password, // Já deve estar hasheada
-    userData.phone || null,
-    userData.cpf || null,
-    userData.birth_date || null,
-    userData.gender || null,
+    encryptedData.name,
+    encryptedData.email,
+    encryptedData.password, // Já deve estar hasheada
+    encryptedData.phone || null,
+    encryptedData.cpf || null,
+    encryptedData.birth_date || null,
+    encryptedData.gender || null,
   ];
   
   return await query(sql, params);
 }
 
 export async function getUserByEmail(email: string): Promise<any> {
+  // Se a criptografia estiver habilitada, tentar buscar com email criptografado primeiro
+  if (ENCRYPTION_ENABLED) {
+    try {
+      const encryptedEmail = encryptPersonalData({ email }).email;
+      const sql = `SELECT * FROM users WHERE email = ? AND is_active = 1`;
+      const result = await query(sql, [encryptedEmail]);
+      
+      if (result[0]) {
+        // Descriptografar dados sensíveis antes de retornar
+        return decryptPersonalData(result[0]);
+      }
+    } catch (error) {
+      console.warn('Erro ao buscar com email criptografado, tentando sem criptografia:', error);
+    }
+  }
+  
+  // Fallback: buscar com email original (para dados não criptografados)
   const sql = `SELECT * FROM users WHERE email = ? AND is_active = 1`;
   const result = await query(sql, [email]);
-  return result[0] || null;
+  
+  if (result[0]) {
+    // Se a criptografia estiver habilitada, tentar descriptografar
+    if (ENCRYPTION_ENABLED) {
+      try {
+        return decryptPersonalData(result[0]);
+      } catch (error) {
+        console.warn('Erro ao descriptografar dados do usuário, retornando dados originais:', error);
+        return result[0];
+      }
+    }
+    return result[0];
+  }
+  
+  return null;
 }
 
 export async function getUserById(id: number): Promise<any> {
   const sql = `SELECT * FROM users WHERE id = ? AND is_active = 1`;
   const result = await query(sql, [id]);
-  return result[0] || null;
+  
+  if (result[0]) {
+    // Se a criptografia estiver habilitada, tentar descriptografar
+    if (ENCRYPTION_ENABLED) {
+      try {
+        return decryptPersonalData(result[0]);
+      } catch (error) {
+        console.warn('Erro ao descriptografar dados do usuário, retornando dados originais:', error);
+        return result[0];
+      }
+    }
+    return result[0];
+  }
+  
+  return null;
 }
 
 export async function updateUserEmailVerification(userId: number): Promise<any> {

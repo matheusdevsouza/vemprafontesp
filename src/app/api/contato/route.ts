@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
 
     const transporter = createTransporter();
 
-    // E-mail para o cliente (contato@vemprafontesp.com.br)
+    // E-mail para o cliente
     const contatoEmail = {
-      from: '"VemPraFonteSP" <noreply@vemprafontesp.com.br>',
-      to: 'contato@vemprafontesp.com.br',
+      from: `"VemPraFonteSP" <${process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@example.com'}>`,
+      to: process.env.CONTACT_EMAIL || 'contato@example.com',
       subject: `[Contato] ${assunto} - ${motivo || 'Geral'}`,
       html: `
         <!DOCTYPE html>
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     // E-mail de confirmação para o cliente
     const confirmacaoEmail = {
-      from: '"VemPraFonteSP" <noreply@vemprafontesp.com.br>',
+      from: `"VemPraFonteSP" <${process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@example.com'}>`,
       to: email,
       subject: 'Confirmação de Contato - VemPraFonteSP',
       html: `

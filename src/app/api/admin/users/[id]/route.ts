@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { authenticateUser, isAdmin } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
@@ -14,6 +15,14 @@ export async function GET(
   });
 
   try {
+    // VERIFICAÇÃO CRÍTICA DE SEGURANÇA - APENAS ADMINS AUTENTICADOS
+    const user = await authenticateUser(request);
+    if (!user || !isAdmin(user)) {
+      return NextResponse.json(
+        { success: false, error: 'Acesso negado. Apenas administradores autorizados.' },
+        { status: 401 }
+      );
+    }
     const id = parseInt(params.id);
     
     if (isNaN(id)) {
@@ -137,6 +146,14 @@ export async function PUT(
   });
 
   try {
+    // VERIFICAÇÃO CRÍTICA DE SEGURANÇA - APENAS ADMINS AUTENTICADOS
+    const user = await authenticateUser(request);
+    if (!user || !isAdmin(user)) {
+      return NextResponse.json(
+        { success: false, error: 'Acesso negado. Apenas administradores autorizados.' },
+        { status: 401 }
+      );
+    }
     const id = parseInt(params.id);
     
     if (isNaN(id)) {
@@ -227,6 +244,14 @@ export async function DELETE(
   });
 
   try {
+    // VERIFICAÇÃO CRÍTICA DE SEGURANÇA - APENAS ADMINS AUTENTICADOS
+    const user = await authenticateUser(request);
+    if (!user || !isAdmin(user)) {
+      return NextResponse.json(
+        { success: false, error: 'Acesso negado. Apenas administradores autorizados.' },
+        { status: 401 }
+      );
+    }
     const id = parseInt(params.id);
     
     if (isNaN(id)) {

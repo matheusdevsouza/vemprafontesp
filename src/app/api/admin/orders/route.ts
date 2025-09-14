@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { decryptOrderData, decryptCheckoutData, decrypt } from '@/lib/encryption';
+import { authenticateUser } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
+    // VERIFICAÇÃO CRÍTICA DE SEGURANÇA - APENAS ADMINS AUTENTICADOS
+    const user = await authenticateUser(request);
+    if (!user || !user.isAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Acesso negado. Apenas administradores autorizados.' },
+        { status: 401 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -112,10 +122,24 @@ export async function GET(request: NextRequest) {
       _sum: { total_amount: true }
     });
 
+    // Descriptografar dados sensíveis dos pedidos
+    const decryptedOrders = orders.map(order => {
+      try {
+        return {
+          ...order,
+          customer_name: order.customer_name ? decrypt(order.customer_name) : order.customer_name,
+          customer_email: order.customer_email ? decrypt(order.customer_email) : order.customer_email
+        };
+      } catch (error) {
+        console.warn('Erro ao descriptografar dados do pedido:', order.id, error);
+        return order; // Retorna dados originais se falhar
+      }
+    });
+
     return NextResponse.json({
       success: true,
       data: {
-        orders,
+        orders: decryptedOrders,
         pagination: {
           page,
           limit,
@@ -145,6 +169,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // VERIFICAÇÃO CRÍTICA DE SEGURANÇA - APENAS ADMINS AUTENTICADOS
+    const user = await authenticateUser(request);
+    if (!user || !user.isAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Acesso negado. Apenas administradores autorizados.' },
+        { status: 401 }
+      );
+    }
     const body = await request.json();
     
     const {

@@ -150,7 +150,7 @@ export default function PoliticaDePrivacidade() {
               <FaEnvelope className="text-primary-500" size={24} />
               <h2 className="text-xl font-semibold text-white">6. Contato</h2>
             </div>
-            <p className="text-gray-300">Em caso de dúvidas sobre nossa política de privacidade, entre em contato pelo e-mail <a href="mailto:contato@vemprafontesp.com.br" className="text-primary-400 hover:underline">contato@vemprafontesp.com.br</a>.</p>
+            <p className="text-gray-300">Em caso de dúvidas sobre nossa política de privacidade, entre em contato pelo e-mail <a href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'contato@example.com'}`} className="text-primary-400 hover:underline">{process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'contato@example.com'}</a>.</p>
           </motion.div>
         </section>
       </div>

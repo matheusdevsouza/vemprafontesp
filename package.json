@@ -18,7 +18,10 @@
     "test:penetration": "ts-node scripts/penetration-test.ts",
     "test:integration": "ts-node scripts/integration-test.ts",
     "test:security:all": "ts-node scripts/run-all-security-tests.ts",
-    "test:brands": "ts-node scripts/test-brands-fix.ts"
+    "test:brands": "ts-node scripts/test-brands-fix.ts",
+    "generate:keys": "node scripts/generate-keys.js",
+    "migrate:encryption": "node scripts/migrate-encryption.js",
+    "security:validate": "ts-node scripts/validate-security.ts"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.0.0",

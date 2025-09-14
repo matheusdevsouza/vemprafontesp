@@ -194,7 +194,7 @@ export async function sendVerificationEmail(data: VerificationEmailData): Promis
   console.log('🚀 [DEBUG] URL de verificação:', verificationUrl);
 
   const mailOptions = {
-    from: `"VemPraFonteSP" <noreply@vemprafontesp.com.br>`,
+    from: `"VemPraFonteSP" <${process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@example.com'}>`,
     to: data.email,
     subject: "Verifique sua conta - VemPraFonteSP",
     html: `
@@ -297,7 +297,7 @@ export async function sendPasswordResetEmail(data: PasswordResetEmailData): Prom
   const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/redefinir-senha?token=${data.resetToken}`;
 
   const mailOptions = {
-    from: `"VemPraFonteSP" <noreply@vemprafontesp.com.br>`,
+    from: `"VemPraFonteSP" <${process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@example.com'}>`,
     to: data.email,
     subject: "Redefinir Senha - VemPraFonteSP",
     html: `
@@ -354,7 +354,7 @@ export async function sendTrackingEmail(data: TrackingEmailData): Promise<void> 
   const transporter = createTransporter();
   
   const mailOptions = {
-    from: `"VemPraFonteSP" <noreply@vemprafontesp.com.br>`,
+    from: `"VemPraFonteSP" <${process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@example.com'}>`,
     to: data.email,
     subject: `Rastreamento do Pedido ${data.orderNumber} - VemPraFonteSP`,
     html: `
@@ -467,7 +467,7 @@ export async function sendPaymentConfirmationEmail(data: PaymentConfirmationEmai
   const transporter = createTransporter();
 
   const mailOptions = {
-    from: `"VemPraFonteSP" <noreply@vemprafontesp.com.br>`,
+    from: `"VemPraFonteSP" <${process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@example.com'}>`,
     to: data.email,
     subject: `Pagamento Aprovado - Pedido ${data.orderNumber} - VemPraFonteSP`,
     html: `
@@ -552,7 +552,7 @@ export async function sendOrderShippedEmail(data: OrderShippedEmailData): Promis
   const transporter = createTransporter();
 
   const mailOptions = {
-    from: `"VemPraFonteSP" <noreply@vemprafontesp.com.br>`,
+    from: `"VemPraFonteSP" <${process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@example.com'}>`,
     to: data.email,
     subject: `Seu Pedido Foi Enviado! - ${data.orderNumber} - VemPraFonteSP`,
     html: `

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/database';
 import { authenticateUser } from '@/lib/auth';
+import { encryptCheckoutData, encryptOrderData, encrypt } from '@/lib/encryption';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 // Configurar Mercado Pago
@@ -61,6 +62,10 @@ export async function POST(request: NextRequest) {
 
     console.log('Criando pedido com user_id:', userId);
 
+    // Criptografar dados sensíveis antes de salvar
+    const encryptedCustomerData = customer ? encryptCheckoutData({ customer }) : null;
+    const encryptedShippingAddress = shipping_address ? encrypt(JSON.stringify(shipping_address)) : null;
+
     // Preparar parâmetros com validação explícita
     const params = [
       userId ? Number(userId) : null,
@@ -74,10 +79,10 @@ export async function POST(request: NextRequest) {
       discount_amount,
       total_amount,
       'BRL',
-      customer?.name || null,
-      customer?.email || null,
-      customer?.phone || null,
-      shipping_address ? JSON.stringify(shipping_address) : null
+      encryptedCustomerData?.customer?.name || customer?.name || null,
+      encryptedCustomerData?.customer?.email || customer?.email || null,
+      encryptedCustomerData?.customer?.phone || customer?.phone || null,
+      encryptedShippingAddress
     ];
 
     console.log('Parâmetros da query:', params);

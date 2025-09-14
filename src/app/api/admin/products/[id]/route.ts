@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProductById } from '@/lib/database';
+import { authenticateUser, isAdmin } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // VERIFICAÇÃO CRÍTICA DE SEGURANÇA - APENAS ADMINS AUTENTICADOS
+    const user = await authenticateUser(request);
+    if (!user || !isAdmin(user)) {
+      return NextResponse.json(
+        { success: false, error: 'Acesso negado. Apenas administradores autorizados.' },
+        { status: 401 }
+      );
+    }
     const productId = parseInt(params.id);
     
     if (isNaN(productId)) {
@@ -40,6 +49,14 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    // VERIFICAÇÃO CRÍTICA DE SEGURANÇA - APENAS ADMINS AUTENTICADOS
+    const user = await authenticateUser(request);
+    if (!user || !isAdmin(user)) {
+      return NextResponse.json(
+        { success: false, error: 'Acesso negado. Apenas administradores autorizados.' },
+        { status: 401 }
+      );
+    }
     const productId = parseInt(params.id);
     
     if (isNaN(productId)) {
@@ -71,6 +88,14 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // VERIFICAÇÃO CRÍTICA DE SEGURANÇA - APENAS ADMINS AUTENTICADOS
+    const user = await authenticateUser(request);
+    if (!user || !isAdmin(user)) {
+      return NextResponse.json(
+        { success: false, error: 'Acesso negado. Apenas administradores autorizados.' },
+        { status: 401 }
+      );
+    }
     const productId = parseInt(params.id);
     
     if (isNaN(productId)) {

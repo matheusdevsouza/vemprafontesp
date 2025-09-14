@@ -182,7 +182,7 @@ export default function Contato() {
             <FaEnvelope className="text-primary-500 mb-2" size={28} />
             <span className="font-semibold text-lg text-white mb-1">E-mail</span>
             <span className="text-gray-400 text-sm">Resposta em até 7 dias</span>
-            <a href="mailto:contato@vemprafontesp.com.br" className="text-gray-300 text-base mt-1 hover:text-primary-500 underline-offset-4 transition-colors">contato@vemprafontesp.com.br</a>
+            <a href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'contato@example.com'}`} className="text-gray-300 text-base mt-1 hover:text-primary-500 underline-offset-4 transition-colors">{process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'contato@example.com'}</a>
           </motion.div>
           <motion.div 
             initial={{ opacity: 0, y: 20 }} 

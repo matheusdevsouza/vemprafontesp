@@ -1,14 +1,259 @@
-// Configurações centralizadas de segurança
+// Configurações de segurança para APIs e dados sensíveis
+
 export const SECURITY_CONFIG = {
-  // Autenticação
+  // Configurações de criptografia
+  ENCRYPTION: {
+    ALGORITHM: 'aes-256-gcm',
+    IV_LENGTH: 16,
+    SALT_LENGTH: 64,
+    HASH_ITERATIONS: 100000,
+    HASH_ALGORITHM: 'sha512',
+    TOKEN_LENGTH: 32
+  },
+
+  // Campos sensíveis que devem ser criptografados
+  SENSITIVE_FIELDS: {
+    USER: [
+      'name', 'email', 'phone', 'cpf', 'address', 'display_name',
+      'birth_date', 'gender', 'zip_code', 'city', 'state', 'country'
+    ],
+    ORDER: [
+      'customer_name', 'customer_email', 'customer_phone', 'customer_cpf',
+      'billing_address', 'shipping_address', 'payment_method'
+    ],
+    ALL: [
+      'name', 'email', 'phone', 'cpf', 'address', 'display_name',
+      'birth_date', 'gender', 'zip_code', 'city', 'state', 'country',
+      'customer_name', 'customer_email', 'customer_phone', 'customer_cpf',
+      'billing_address', 'shipping_address', 'payment_method', 'password'
+    ]
+  },
+
+  // Configurações de rate limiting
+  RATE_LIMITING: {
+    WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutos
+    MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
+    SKIP_SUCCESSFUL_REQUESTS: false,
+    SKIP_FAILED_REQUESTS: false
+  },
+
+  // Configurações de upload
+  UPLOAD: {
+    MAX_FILE_SIZE: parseInt(process.env.MAX_FILE_SIZE || '5242880'), // 5MB
+    ALLOWED_TYPES: (process.env.ALLOWED_FILE_TYPES || 'image/jpeg,image/png,image/webp').split(','),
+    UPLOAD_DIR: process.env.UPLOAD_DIR || 'public/uploads',
+    REQUIRE_AUTH: true
+  },
+
+  // Configurações de sessão
+  SESSION: {
+    MAX_AGE: 24 * 60 * 60 * 1000, // 24 horas
+    SECURE: process.env.NODE_ENV === 'production',
+    HTTP_ONLY: true,
+    SAME_SITE: 'strict' as const
+  },
+
+  // Configurações de CORS
+  CORS: {
+    ORIGIN: process.env.CORS_ORIGIN || process.env.NEXT_PUBLIC_APP_URL || '*',
+    METHODS: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    ALLOWED_HEADERS: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    CREDENTIALS: true
+  },
+
+  // Configurações de logs
+  LOGGING: {
+    LEVEL: process.env.LOG_LEVEL || 'info',
+    ENABLE_DEBUG: process.env.ENABLE_DEBUG_LOGS === 'true',
+    SANITIZE_SENSITIVE_DATA: true,
+    LOG_FILE: process.env.LOG_FILE || 'logs/app.log'
+  },
+
+  // Configurações de banco de dados
+  DATABASE: {
+    CONNECTION_LIMIT: parseInt(process.env.DB_CONNECTION_LIMIT || '10'),
+    TIMEOUT: parseInt(process.env.DB_TIMEOUT || '60000'),
+    RETRY_ATTEMPTS: parseInt(process.env.DB_RETRY_ATTEMPTS || '3'),
+    ENABLE_SSL: process.env.DB_SSL === 'true'
+  },
+
+  // Configurações de autenticação
   AUTH: {
     JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-    JWT_EXPIRES_IN: '24h',
-    REFRESH_TOKEN_EXPIRES_IN: '7d',
-    SALT_ROUNDS: 15,
-    SESSION_TIMEOUT: 24 * 60 * 60 * 1000, // 24 horas
+    JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '24h',
+    REFRESH_TOKEN_EXPIRES_IN: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d',
+    PASSWORD_MIN_LENGTH: parseInt(process.env.PASSWORD_MIN_LENGTH || '8'),
+    PASSWORD_REQUIRE_SPECIAL_CHARS: process.env.PASSWORD_REQUIRE_SPECIAL_CHARS === 'true',
+    PASSWORD_REQUIRE_NUMBERS: process.env.PASSWORD_REQUIRE_NUMBERS === 'true',
+    PASSWORD_REQUIRE_UPPERCASE: process.env.PASSWORD_REQUIRE_UPPERCASE === 'true',
+    MAX_LOGIN_ATTEMPTS: parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5'),
+    LOCKOUT_DURATION: parseInt(process.env.LOCKOUT_DURATION || '900000') // 15 minutos
   },
+
+  // Configurações de email
+  EMAIL: {
+    FROM: process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@example.com',
+    REPLY_TO: process.env.SMTP_REPLY_TO || process.env.EMAIL_REPLY_TO || 'contato@example.com',
+    TEMPLATE_DIR: process.env.EMAIL_TEMPLATE_DIR || 'src/templates/email',
+    RATE_LIMIT: parseInt(process.env.EMAIL_RATE_LIMIT || '10'), // emails por hora
+    MAX_RECIPIENTS: parseInt(process.env.EMAIL_MAX_RECIPIENTS || '100')
+  },
+
+  // Configurações de pagamento
+  PAYMENT: {
+    MERCADOPAGO_ACCESS_TOKEN: process.env.MERCADOPAGO_ACCESS_TOKEN,
+    MERCADOPAGO_PUBLIC_KEY: process.env.MERCADOPAGO_PUBLIC_KEY,
+    MERCADOPAGO_WEBHOOK_SECRET: process.env.MERCADOPAGO_WEBHOOK_SECRET,
+    WEBHOOK_TIMEOUT: parseInt(process.env.WEBHOOK_TIMEOUT || '30000'),
+    RETRY_ATTEMPTS: parseInt(process.env.PAYMENT_RETRY_ATTEMPTS || '3')
+  },
+
+  // Configurações de monitoramento
+  MONITORING: {
+    ENABLE_METRICS: process.env.ENABLE_METRICS === 'true',
+    METRICS_PORT: parseInt(process.env.METRICS_PORT || '9090'),
+    HEALTH_CHECK_INTERVAL: parseInt(process.env.HEALTH_CHECK_INTERVAL || '30000'),
+    ALERT_THRESHOLDS: {
+      CPU_USAGE: parseFloat(process.env.CPU_ALERT_THRESHOLD || '80'),
+      MEMORY_USAGE: parseFloat(process.env.MEMORY_ALERT_THRESHOLD || '80'),
+      ERROR_RATE: parseFloat(process.env.ERROR_RATE_THRESHOLD || '5')
+    }
+  },
+
+  // Configurações de backup
+  BACKUP: {
+    ENABLE_AUTO_BACKUP: process.env.ENABLE_AUTO_BACKUP === 'true',
+    BACKUP_INTERVAL: process.env.BACKUP_INTERVAL || '24h',
+    BACKUP_RETENTION_DAYS: parseInt(process.env.BACKUP_RETENTION_DAYS || '30'),
+    BACKUP_DIR: process.env.BACKUP_DIR || 'backups',
+    ENCRYPT_BACKUPS: process.env.ENCRYPT_BACKUPS === 'true'
+  },
+
+  // Configurações de compliance (LGPD)
+  COMPLIANCE: {
+    ENABLE_DATA_ENCRYPTION: process.env.ENABLE_DATA_ENCRYPTION === 'true',
+    ENABLE_AUDIT_LOGS: process.env.ENABLE_AUDIT_LOGS === 'true',
+    DATA_RETENTION_DAYS: parseInt(process.env.DATA_RETENTION_DAYS || '2555'), // 7 anos
+    ENABLE_DATA_EXPORT: process.env.ENABLE_DATA_EXPORT === 'true',
+    ENABLE_DATA_DELETION: process.env.ENABLE_DATA_DELETION === 'true',
+    PRIVACY_POLICY_URL: process.env.PRIVACY_POLICY_URL || '/politica-de-privacidade',
+    TERMS_OF_SERVICE_URL: process.env.TERMS_OF_SERVICE_URL || '/termos-de-uso'
+  }
+};
+
+// Validações de configuração
+export function validateSecurityConfig() {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Validar chaves obrigatórias
+  if (!process.env.ENCRYPTION_KEY) {
+    errors.push('ENCRYPTION_KEY é obrigatória');
+  } else if (process.env.ENCRYPTION_KEY.length < 32) {
+    errors.push('ENCRYPTION_KEY deve ter pelo menos 32 caracteres');
+  }
+
+  if (!process.env.USER_ID_SALT) {
+    errors.push('USER_ID_SALT é obrigatório');
+  }
+
+  if (!process.env.JWT_SECRET) {
+    errors.push('JWT_SECRET é obrigatório');
+  } else if (process.env.JWT_SECRET.length < 32) {
+    errors.push('JWT_SECRET deve ter pelo menos 32 caracteres');
+  }
+
+  // Validar configurações de produção
+  if (process.env.NODE_ENV === 'production') {
+    if (SECURITY_CONFIG.AUTH.JWT_SECRET === 'your-secret-key-change-in-production') {
+      errors.push('JWT_SECRET deve ser alterado em produção');
+    }
+
+    if (!process.env.MERCADOPAGO_ACCESS_TOKEN) {
+      errors.push('MERCADOPAGO_ACCESS_TOKEN é obrigatório em produção');
+    }
+
+    if (!process.env.SMTP_HOST) {
+      errors.push('Configurações SMTP são obrigatórias em produção');
+    }
+  }
+
+  // Warnings para configurações não ideais
+  if (SECURITY_CONFIG.RATE_LIMITING.MAX_REQUESTS > 1000) {
+    warnings.push('Rate limit muito alto pode comprometer a segurança');
+  }
+
+  if (SECURITY_CONFIG.UPLOAD.MAX_FILE_SIZE > 10 * 1024 * 1024) { // 10MB
+    warnings.push('Tamanho máximo de arquivo muito alto');
+  }
+
+  return { errors, warnings };
+}
+
+// Configurações de desenvolvimento
+export const DEV_CONFIG = {
+  ENABLE_DATABASE: process.env.NODE_ENV === 'production',
+  ENABLE_CACHING: process.env.NODE_ENV === 'production',
+  ENABLE_COMPRESSION: process.env.NODE_ENV === 'production',
+  ENABLE_LOGGING: true,
+  ENABLE_DEBUG: process.env.NODE_ENV === 'development'
+};
+
+// Configurações de produção
+export const PROD_CONFIG = {
+  ENABLE_DATABASE: true,
+  ENABLE_CACHING: true,
+  ENABLE_COMPRESSION: true,
+  ENABLE_LOGGING: true,
+  ENABLE_DEBUG: false,
+  ENABLE_SSL: true,
+  ENABLE_SECURITY_HEADERS: true,
+  ENABLE_RATE_LIMITING: true,
+  ENABLE_AUDIT_LOGS: true
+};
+
+// Função para obter configuração baseada no ambiente
+export function getConfig() {
+  const isProduction = process.env.NODE_ENV === 'production';
   
+  if (isProduction) {
+    return {
+      ...SECURITY_CONFIG,
+      ...PROD_CONFIG
+    };
+  }
+  
+  return {
+    ...SECURITY_CONFIG,
+    ...DEV_CONFIG
+  };
+}
+
+// Validação de segurança em tempo de execução
+export function validateRuntimeSecurity() {
+  const config = getConfig();
+  const { errors, warnings } = validateSecurityConfig();
+
+  if (errors.length > 0) {
+    console.error('❌ Erros de configuração de segurança:', errors);
+    if (config.ENABLE_DATABASE) {
+      throw new Error('Configuração de segurança inválida');
+    }
+  }
+
+  if (warnings.length > 0) {
+    console.warn('⚠️ Avisos de segurança:', warnings);
+  }
+
+  // Validações adicionais
+  if (config.AUTH.JWT_SECRET.includes('CHANGE_THIS') || config.AUTH.JWT_SECRET.includes('your-secret')) {
+    warnings.push('Altere o JWT_SECRET para um valor seguro e único');
+  }
+
+  return { errors, warnings, config };
+}
+
+export default SECURITY_CONFIG;
   // Rate Limiting
   RATE_LIMITING: {
     MAX_LOGIN_ATTEMPTS: 5,
@@ -335,6 +580,7 @@ export function generateSecurityReport(): {
     if (!config.MONITORING.ENABLE_ANOMALY_DETECTION) {
       recommendations.push('Habilite detecção de anomalias em produção');
     }
+
   }
   
   if (config.AUTH.SALT_ROUNDS < 12) {

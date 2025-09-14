@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/database';
 import { sendOrderShippedEmail } from '@/lib/email';
+import { decryptOrderData, decryptCheckoutData, decrypt } from '@/lib/encryption';
+import { authenticateUser } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // VERIFICAÇÃO CRÍTICA DE SEGURANÇA - APENAS ADMINS AUTENTICADOS
+    const user = await authenticateUser(request);
+    if (!user || !user.isAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Acesso negado. Apenas administradores autorizados.' },
+        { status: 401 }
+      );
+    }
     const orderId = params.id;
 
     const order = await query(
@@ -27,13 +37,20 @@ export async function GET(
       [orderId]
     );
 
-    // Adicionar items ao pedido
-    const orderWithItems = {
-      ...order[0],
+    // Adicionar items ao pedido e descriptografar dados sensíveis
+    const orderData = order[0];
+    
+    // Descriptografar dados sensíveis
+    const decryptedOrder = {
+      ...orderData,
+      customer_name: orderData.customer_name ? decrypt(orderData.customer_name) : orderData.customer_name,
+      customer_email: orderData.customer_email ? decrypt(orderData.customer_email) : orderData.customer_email,
+      customer_phone: orderData.customer_phone ? decrypt(orderData.customer_phone) : orderData.customer_phone,
+      shipping_address: orderData.shipping_address ? decrypt(orderData.shipping_address) : orderData.shipping_address,
       items: items || []
     };
 
-    return NextResponse.json({ order: orderWithItems });
+    return NextResponse.json({ order: decryptedOrder });
 
   } catch (error) {
     console.error('Erro ao buscar pedido:', error);
@@ -49,6 +66,14 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // VERIFICAÇÃO CRÍTICA DE SEGURANÇA - APENAS ADMINS AUTENTICADOS
+    const user = await authenticateUser(request);
+    if (!user || !user.isAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Acesso negado. Apenas administradores autorizados.' },
+        { status: 401 }
+      );
+    }
     const orderId = params.id;
     const body = await request.json();
     const { status, payment_status, tracking_code, tracking_url, shipping_company, shipping_status, shipping_notes } = body;

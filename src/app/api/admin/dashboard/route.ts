@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { authenticateUser, isAdmin } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   // Forçar nova instância do Prisma a cada requisição
@@ -12,6 +13,14 @@ export async function GET(request: NextRequest) {
   });
 
   try {
+    // VERIFICAÇÃO CRÍTICA DE SEGURANÇA - APENAS ADMINS AUTENTICADOS
+    const user = await authenticateUser(request);
+    if (!user || !isAdmin(user)) {
+      return NextResponse.json(
+        { success: false, error: 'Acesso negado. Apenas administradores autorizados.' },
+        { status: 401 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || 'month';
 
