@@ -8,8 +8,8 @@ import Image from 'next/image'
 const heroImages = [
   {
     id: 1,
-    imageUrl: '/images/banners/banner.png',
-    mobileImageUrl: '/images/banners/bannermbl.png',
+    imageUrl: '/images/banners/principal.png',
+    mobileImageUrl: '/images/banners/principalmbl.png',
     alt: 'VemPraFonteSP - Os melhores tênis - BANNER PRINCIPAL'
   },
   {

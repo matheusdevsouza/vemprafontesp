@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getProductBySlug, getProductImages, getProductVariants, getProductReviews } from '@/lib/database';
+import { getProductBySlug, getProductImages, getProductVideos, getProductVariants, getProductReviews } from '@/lib/database';
 
 export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
   try {
@@ -14,8 +14,9 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
       return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 });
     }
 
-    // Buscar imagens
+    // Buscar imagens e vídeos
     const images = await getProductImages(product.id);
+    const videos = await getProductVideos(product.id);
     // Buscar variantes (tamanhos)
     const variants = await getProductVariants(product.id);
     // Buscar avaliações
@@ -47,6 +48,12 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
       stockQuantity: product.stock_quantity,
       slug: product.slug,
       images: images.map((img: any) => ({ url: img.image_url, alt: img.alt_text })),
+      videos: videos.map((vid: any) => ({ 
+        url: vid.video_url, 
+        alt: vid.alt_text,
+        duration: vid.duration,
+        thumbnail: vid.thumbnail_url 
+      })),
       sizes,
       reviews,
     });

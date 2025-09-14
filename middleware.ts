@@ -54,6 +54,7 @@ const publicRoutes = [
   '/api/shipping/validate-cep',
   '/api/webhooks/mercadopago',
   '/api/test-webhook',
+  '/uploads', // Permitir acesso aos arquivos de upload
 ];
 
 // Rotas que requerem autenticação
@@ -387,7 +388,8 @@ export const config = {
      * - public folder
      * - MODELOS folder
      * - images folder
+     * - uploads folder (uploaded files)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public/|MODELOS/|images/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public/|MODELOS/|images/|uploads/).*)',
   ],
 };

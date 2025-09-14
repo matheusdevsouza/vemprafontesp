@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -42,7 +42,7 @@ export default function ProdutoPage() {
 
   const handleAddToCart = useCallback(() => {
     if (!product) return;
-    const image = product.primary_image || product.image || (product.images && product.images[0]?.url) || '/images/Logo.png';
+    const image = product.primary_image || product.image || (allMedia && allMedia[0]?.url) || '/images/Logo.png';
     addItem(product, quantity, selectedSize || undefined, image);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
@@ -53,21 +53,51 @@ export default function ProdutoPage() {
     setCurrentImageIndex(index);
   }, []);
 
-  const nextImage = useCallback(() => {
-    if (!product?.images) return;
-    const next = (currentImageIndex + 1) % product.images.length;
-    handleImageChange(next);
-  }, [currentImageIndex, product?.images, handleImageChange]);
-
-  const prevImage = useCallback(() => {
-    if (!product?.images) return;
-    const prev = currentImageIndex === 0 ? product.images.length - 1 : currentImageIndex - 1;
-    handleImageChange(prev);
-  }, [currentImageIndex, product?.images, handleImageChange]);
+  // Combinar imagens e vídeos em uma única lista de mídia
+  const images = product?.images || [];
+  const videos = product?.videos || [];
+  
+  // Combinar todas as mídias (imagens + vídeos) em uma lista unificada
+  const allMedia = useMemo(() => [
+    ...images.map((img: any) => ({ ...img, type: 'image' })),
+    ...videos.map((vid: any) => ({ ...vid, type: 'video', url: vid.url }))
+  ].sort((a, b) => {
+    // Priorizar mídia primária primeiro, depois por ordem de inserção
+    if (a.isPrimary && !b.isPrimary) return -1;
+    if (!a.isPrimary && b.isPrimary) return 1;
+    return 0;
+  }), [images, videos]);
 
   const toggleFavorite = () => {
     setIsFavorite(!isFavorite);
   };
+
+  const nextImage = useCallback(() => {
+    setCurrentImageIndex(prev => {
+      if (!allMedia || allMedia.length === 0) return prev;
+      const next = (prev + 1) % allMedia.length;
+      setSelectedImage(next);
+      return next;
+    });
+  }, [allMedia]);
+
+  const prevImage = useCallback(() => {
+    setCurrentImageIndex(prev => {
+      if (!allMedia || allMedia.length === 0) return prev;
+      const newPrev = prev === 0 ? allMedia.length - 1 : prev - 1;
+      setSelectedImage(newPrev);
+      return newPrev;
+    });
+  }, [allMedia]);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight") nextImage();
+      if (e.key === "ArrowLeft") prevImage();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [nextImage, prevImage]);
 
   const shareProduct = async () => {
     if (!product) return;
@@ -86,14 +116,6 @@ export default function ProdutoPage() {
     }
   };
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") nextImage();
-      if (e.key === "ArrowLeft") prevImage();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [nextImage, prevImage]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -104,6 +126,15 @@ export default function ProdutoPage() {
       
       if (data && data.images && data.images.length > 0) {
         preloadImages(data.images);
+      }
+      
+      // Pré-carregar vídeos também
+      if (data && data.videos && data.videos.length > 0) {
+        data.videos.forEach((video: any) => {
+          const videoElement = document.createElement('video');
+          videoElement.src = video.url;
+          videoElement.preload = 'metadata';
+        });
       }
       
       setLoading(false);
@@ -160,7 +191,6 @@ export default function ProdutoPage() {
     );
   }
 
-  const images = product.images || [];
   // Garantir que não há tamanhos duplicados
   const sizes = Array.from(new Set(product.sizes || [])) as string[];
   const care = product.care_instructions || `Evite lavar na máquina para preservar a estrutura.\nLimpe com pano úmido e sabão neutro.\nSeque à sombra para evitar desbotamento.\nGuarde em local arejado.`;
@@ -239,20 +269,31 @@ export default function ProdutoPage() {
                   } : undefined}
                   onMouseLeave={() => setZoomPos(null)}
                 >
-                  {images[selectedImage] && (
-                    <Image
-                      src={images[selectedImage].url}
-                      alt={`${product.name} - Imagem principal`}
-                      fill
-                      className="object-cover object-top transition-transform duration-300"
-                      priority={selectedImage === 0}
-                      sizes="(max-width: 1024px) 100vw, 50vw"
-                    />
+                  {allMedia[selectedImage] && (
+                    <>
+                      {allMedia[selectedImage].type === 'video' ? (
+                        <video
+                          src={allMedia[selectedImage].url}
+                          className="w-full h-full object-cover object-top transition-transform duration-300"
+                          controls
+                          preload="metadata"
+                        />
+                      ) : (
+                        <Image
+                          src={allMedia[selectedImage].url}
+                          alt={`${product.name} - ${allMedia[selectedImage].alt || 'Imagem principal'}`}
+                          fill
+                          className="object-cover object-top transition-transform duration-300"
+                          priority={selectedImage === 0}
+                          sizes="(max-width: 1024px) 100vw, 50vw"
+                        />
+                      )}
+                    </>
                   )}
 
                   {/* Lupa circular melhorada com animação */}
                   <AnimatePresence>
-                  {zoomEnabled && zoomPos && images[selectedImage] && zoomRef.current && (
+                  {zoomEnabled && zoomPos && allMedia[selectedImage] && allMedia[selectedImage].type === 'image' && zoomRef.current && (
                       <motion.div
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -262,7 +303,7 @@ export default function ProdutoPage() {
                           style={{
                           left: Math.max(0, Math.min(zoomPos.x - 64, zoomRef.current.offsetWidth - 128)),
                           top: Math.max(0, Math.min(zoomPos.y - 64, zoomRef.current.offsetHeight - 128)),
-                            backgroundImage: `url(${images[selectedImage].url})`,
+                            backgroundImage: `url(${allMedia[selectedImage].url})`,
                           backgroundSize: '800% 800%',
                           backgroundPosition: `${(zoomPos.x / zoomRef.current.offsetWidth) * 87.5}% ${(zoomPos.y / zoomRef.current.offsetHeight) * 87.5}%`,
                           backgroundRepeat: 'no-repeat',
@@ -294,15 +335,15 @@ export default function ProdutoPage() {
                   <span className="text-xs text-gray-500 flex items-center justify-center gap-2 bg-dark-800/50 px-3 py-2 rounded-full">
                     <MagnifyingGlass size={14} />
                     {zoomEnabled ? 'Zoom ativo • Mova o mouse sobre a imagem' : 'Clique no ícone de lupa para ativar o zoom'}
-                    {images.length > 1 && ' • Use as setas para navegar'}
+                    {allMedia.length > 1 && ' • Use as setas para navegar'}
                   </span>
                 </div>
               </div>
 
               {/* Miniaturas */}
-              {images.length > 1 && (
+              {allMedia.length > 1 && (
                 <div className="flex gap-3 mt-6 overflow-x-auto pb-2">
-                  {images.map((img: any, idx: number) => (
+                  {allMedia.map((media: any, idx: number) => (
                     <motion.button
                       key={idx}
                       onClick={() => handleImageChange(idx)}
@@ -314,15 +355,33 @@ export default function ProdutoPage() {
                           : "border-dark-700 hover:border-primary-400"
                       }`}
                     >
-                      <Image 
-                        src={img.url} 
-                        alt={`${product.name} - Miniatura ${idx + 1}`} 
-                        width={80} 
-                        height={80} 
-                        className="object-cover w-full h-full" 
-                        loading="lazy"
-                        sizes="80px"
-                      />
+                      {media.type === 'video' ? (
+                        <div className="relative w-full h-full bg-dark-800 flex items-center justify-center">
+                          <video
+                            src={media.url}
+                            className="w-full h-full object-cover"
+                            muted
+                            preload="metadata"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-6 h-6 bg-white/80 rounded-full flex items-center justify-center">
+                              <svg className="w-4 h-4 text-dark-900 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <Image 
+                          src={media.url} 
+                          alt={`${product.name} - Miniatura ${idx + 1}`} 
+                          width={80} 
+                          height={80} 
+                          className="object-cover w-full h-full" 
+                          loading="lazy"
+                          sizes="80px"
+                        />
+                      )}
                     </motion.button>
                   ))}
                 </div>

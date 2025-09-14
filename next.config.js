@@ -1,60 +1,37 @@
-// Carregar variáveis de ambiente manualmente
-const fs = require('fs');
-
-function loadEnvFile(filePath) {
-  if (fs.existsSync(filePath)) {
-    const content = fs.readFileSync(filePath, 'utf8');
-    const lines = content.split('\n');
-
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-      if (trimmedLine && !trimmedLine.startsWith('#')) {
-        const [key, ...valueParts] = trimmedLine.split('=');
-        if (key && valueParts.length > 0) {
-          let value = valueParts.join('=').trim();
-          
-          // Remover aspas duplas se existirem
-          if (value.startsWith('"') && value.endsWith('"')) {
-            value = value.slice(1, -1);
-          }
-          
-          process.env[key.trim()] = value;
-        }
-      }
-    }
-  }
-}
-
-// Carregar arquivos de ambiente
-loadEnvFile('.env.local');
-loadEnvFile('.env');
-
-// Debug das variáveis carregadas
-console.log('🔧 [DEBUG] Variáveis carregadas no next.config.js:');
-console.log('🔧 [DEBUG] DATABASE_URL:', process.env.DATABASE_URL);
-console.log('🔧 [DEBUG] SMTP_HOST:', process.env.SMTP_HOST);
-console.log('🔧 [DEBUG] NODE_ENV:', process.env.NODE_ENV);
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   
-  // Forçar carregamento dos arquivos de ambiente
-  env: {
-    DATABASE_URL: process.env.DATABASE_URL,
-    SMTP_HOST: process.env.SMTP_HOST,
-    SMTP_PORT: process.env.SMTP_PORT,
-    SMTP_USER: process.env.SMTP_USER,
-    SMTP_PASS: process.env.SMTP_PASS,
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-  },
-  
+  // Configuração de imagens otimizada
   images: {
-    domains: ['localhost', '127.0.0.1', 'vemprafontesp.com.br'],
-    unoptimized: process.env.NODE_ENV === 'development'
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '3000',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vemprafontesp.com.br',
+        pathname: '/uploads/**',
+      }
+    ],
+    unoptimized: true, // Desabilitar otimização completamente para evitar erros 400
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
+  // Configurações experimentais
+  experimental: {
+    serverComponentsExternalPackages: ['mysql2'],
+    serverActions: {
+      allowedOrigins: ['localhost:3000', 'vemprafontesp.com.br']
+    }
+  },
+
+  // Headers de segurança
   async headers() {
     return [
       {
@@ -69,10 +46,17 @@ const nextConfig = {
     ]
   },
 
+  // Configurações de build
+  // output: 'standalone', // Removido para evitar problemas
+  
   // Configurações de desenvolvimento
-  experimental: {
-    serverComponentsExternalPackages: ['mysql2']
-  }
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
 }
 
 module.exports = nextConfig

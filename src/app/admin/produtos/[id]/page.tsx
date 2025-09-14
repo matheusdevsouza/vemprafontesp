@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { FaSpinner, FaSave, FaArrowLeft, FaCheckCircle } from 'react-icons/fa'
+import MediaManager from '@/components/admin/MediaManager'
 
 interface Product {
   id: number
@@ -32,11 +33,15 @@ export default function ProductDetailPage() {
         const res = await fetch(`/api/admin/products/${id}`)
         if (!res.ok) throw new Error('Falha ao carregar produto')
         const response = await res.json()
-        const data = response.data // Os dados estão em response.data
+        const data = response.product // Os dados estão em response.product
+        
+        if (!data || !data.id) {
+          throw new Error('Dados do produto inválidos')
+        }
         
         setProduct({
           id: data.id,
-          name: data.name,
+          name: data.name || '',
           description: data.description ?? '',
           price: Number(data.price ?? 0),
           stock_quantity: Number(data.stock_quantity ?? 0),
@@ -58,7 +63,7 @@ export default function ProductDetailPage() {
       setSaving(true)
       setError(null)
       const res = await fetch(`/api/admin/products/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: product.name,
@@ -180,6 +185,18 @@ export default function ProductDetailPage() {
             </select>
           </div>
         </div>
+      </div>
+
+      {/* Seção de Gerenciamento de Mídia */}
+      <div className="bg-dark-800/60 border border-dark-700/60 rounded-xl p-6">
+        <h2 className="text-xl font-semibold text-white mb-6">Gerenciamento de Mídia</h2>
+        <MediaManager 
+          productId={product.id} 
+          onMediaUpdate={() => {
+            // Recarregar dados do produto se necessário
+            console.log('Mídia atualizada');
+          }}
+        />
       </div>
     </div>
   )

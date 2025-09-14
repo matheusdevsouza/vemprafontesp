@@ -280,6 +280,24 @@ export async function getProductImages(productId: number): Promise<any[]> {
   return await query(sql, [productId]);
 }
 
+export async function getProductVideos(productId: number): Promise<any[]> {
+  const sql = `
+    SELECT * FROM product_videos 
+    WHERE product_id = ? 
+    ORDER BY is_primary DESC, sort_order ASC, id ASC
+  `;
+  return await query(sql, [productId]);
+}
+
+export async function getProductMedia(productId: number): Promise<{ images: any[], videos: any[] }> {
+  const [images, videos] = await Promise.all([
+    getProductImages(productId),
+    getProductVideos(productId)
+  ]);
+  
+  return { images, videos };
+}
+
 export async function getProductVariants(productId: number): Promise<any[]> {
   const sql = `
     SELECT DISTINCT size, id, product_id, is_active, created_at, updated_at
@@ -757,6 +775,10 @@ export async function getModelBySlug(slug: string): Promise<any | null> {
       'air-max-dn': {
         image: '/images/modelos/Air Max DN.webp',
         description: 'Futurístico Air Max DN com design inovador. O futuro do conforto e da tecnologia Nike.'
+      },
+      'air-max-plus-dn8': {
+        image: '/images/modelos/Air Max DN.webp',
+        description: 'Air Max Plus DN8 com design inovador e tecnologia de ponta. A evolução do conforto e estilo Nike.'
       },
       'mizuno-prophecy-6': {
         image: '/images/modelos/Mizuno Prophecy 6.avif',
