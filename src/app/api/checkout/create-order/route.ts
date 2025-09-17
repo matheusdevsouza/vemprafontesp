@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/database';
 import { authenticateUser } from '@/lib/auth';
-import { encryptCheckoutData, encryptOrderData, encrypt } from '@/lib/encryption';
+import { encryptCheckoutData, encryptOrderData } from '@/lib/encryption';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 // Configurar Mercado Pago
@@ -155,11 +155,11 @@ export async function POST(request: NextRequest) {
     // Gerar número do pedido
     const orderNumber = `VEM${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
-    // Criptografar dados sensíveis do cliente
-    const encryptedCustomerName = encrypt(customer.name);
-    const encryptedCustomerEmail = encrypt(customer.email);
-    const encryptedCustomerPhone = customer.phone ? encrypt(customer.phone) : null;
-    const encryptedShippingAddress = encrypt(JSON.stringify(shipping_address));
+    // Armazenar dados do cliente em texto simples (sem criptografia)
+    const encryptedCustomerName = customer.name;
+    const encryptedCustomerEmail = customer.email;
+    const encryptedCustomerPhone = customer.phone;
+    const encryptedShippingAddress = JSON.stringify(shipping_address);
 
     // Criar pedido no banco
     const orderResult = await query(
@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
 
       // Atualizar pedido com ID do Mercado Pago
       await query(
-        'UPDATE orders SET mercado_pago_preference_id = ? WHERE id = ?',
+        'UPDATE orders SET external_reference = ? WHERE id = ?',
         [preferenceResult.id, orderId]
       );
 
@@ -230,17 +230,18 @@ export async function POST(request: NextRequest) {
         orderId: orderId,
         orderNumber: orderNumber,
         preferenceId: preferenceResult.id,
-        initPoint: preferenceResult.init_point,
+        init_point: preferenceResult.init_point,
+        sandbox_init_point: preferenceResult.sandbox_init_point,
         total: total
       });
 
     } catch (mpError) {
       console.error('Erro ao criar preferência do Mercado Pago:', mpError);
       
-      // Se falhar o Mercado Pago, marcar pedido como erro
+      // Se falhar o Mercado Pago, marcar pedido como cancelado
       await query(
         'UPDATE orders SET status = ?, payment_status = ? WHERE id = ?',
-        ['error', 'error', orderId]
+        ['cancelled', 'failed', orderId]
       );
 
       return NextResponse.json(

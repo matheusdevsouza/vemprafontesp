@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/database';
 import { authenticateUser } from '@/lib/auth';
-import { decrypt } from '@/lib/encryption';
+// Removida importação de descriptografia - dados agora em texto simples
 
 export async function GET(request: NextRequest) {
   try {
@@ -118,11 +118,11 @@ export async function GET(request: NextRequest) {
     const previousRevenue = parseFloat(revenueStats[0].previous) || 0;
     const revenueChange = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
 
-    // Descriptografar dados dos pedidos recentes
+    // Processar dados dos pedidos recentes (dados já estão em texto simples)
     const processedRecentOrders = recentOrders.map((order: any) => ({
       id: order.id,
       orderNumber: order.order_number,
-      customerName: order.customer_name ? decrypt(order.customer_name) : 'Cliente não identificado',
+      customerName: order.customer_name || 'Cliente não identificado',
       total: parseFloat(order.total_amount),
       status: order.status,
       createdAt: order.created_at

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/database';
 import { sendOrderShippedEmail } from '@/lib/email';
-import { decryptOrderData, decryptCheckoutData, decrypt } from '@/lib/encryption';
+// Removida importação de descriptografia - dados agora em texto simples
 import { authenticateUser } from '@/lib/auth';
 
 export async function GET(
@@ -37,20 +37,16 @@ export async function GET(
       [orderId]
     );
 
-    // Adicionar items ao pedido e descriptografar dados sensíveis
+    // Adicionar items ao pedido (dados já estão em texto simples)
     const orderData = order[0];
     
-    // Descriptografar dados sensíveis
-    const decryptedOrder = {
+    // Dados já estão em texto simples
+    const processedOrder = {
       ...orderData,
-      customer_name: orderData.customer_name ? decrypt(orderData.customer_name) : orderData.customer_name,
-      customer_email: orderData.customer_email ? decrypt(orderData.customer_email) : orderData.customer_email,
-      customer_phone: orderData.customer_phone ? decrypt(orderData.customer_phone) : orderData.customer_phone,
-      shipping_address: orderData.shipping_address ? decrypt(orderData.shipping_address) : orderData.shipping_address,
       items: items || []
     };
 
-    return NextResponse.json({ order: decryptedOrder });
+    return NextResponse.json({ order: processedOrder });
 
   } catch (error) {
     console.error('Erro ao buscar pedido:', error);

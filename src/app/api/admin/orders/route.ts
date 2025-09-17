@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/database';
-import { decryptForAdmin } from '@/lib/encryption';
+// Removida importação de decryptForAdmin - dados agora em texto simples
 import { authenticateUser } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -80,23 +80,9 @@ export async function GET(request: NextRequest) {
       FROM orders
     `);
 
-    // Função para descriptografar dados para o painel admin
-    const decryptForAdminDisplay = (value: string | null, fieldName: string = 'campo') => {
-      if (!value) return null;
-      
-      // Se não parece ser um valor criptografado, retorna como está
-      if (!value.includes(':') || value.split(':').length !== 4) {
-        return value;
-      }
-      
-      try {
-        const decrypted = decryptForAdmin({ [fieldName]: value });
-        return decrypted[fieldName];
-      } catch (error) {
-        console.warn(`Erro ao descriptografar ${fieldName} para admin:`, error instanceof Error ? error.message : String(error));
-        // Retorna um placeholder mais amigável para o admin
-        return `[${fieldName.toUpperCase()} CRIPTOGRAFADO]`;
-      }
+    // Função para exibir dados (agora em texto simples)
+    const displayData = (value: string | null, fieldName: string = 'campo') => {
+      return value || null;
     };
 
     // Buscar itens dos pedidos
@@ -140,8 +126,8 @@ export async function GET(request: NextRequest) {
       return acc;
     }, {});
 
-    // Descriptografar dados para o painel admin (nome, email, telefone e endereço já estão em texto plano)
-    const decryptedOrders = orders.map((order: any) => ({
+    // Processar dados para o painel admin (dados já estão em texto simples)
+    const processedOrders = orders.map((order: any) => ({
       id: order.id,
       order_number: order.order_number,
       customer_name: order.customer_name || 'Cliente não identificado', // Nome já está em texto plano
@@ -180,7 +166,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        orders: decryptedOrders,
+        orders: processedOrders,
         stats: stats,
         pagination: {
           page,
