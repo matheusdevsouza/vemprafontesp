@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
     const shippingCost = 0.00; // Frete grátis por enquanto
 
     // Gerar número do pedido
-    const orderNumber = `VEM${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const orderNumber = `VPF-${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
     // Armazenar dados do cliente em texto simples (sem criptografia)
     const encryptedCustomerName = customer.name;
