@@ -148,6 +148,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Calcular subtotal e shipping cost
+    const subtotal = total; // Subtotal é o valor dos produtos (sem frete)
+    const shippingCost = 0.00; // Frete grátis por enquanto
+
     // Gerar número do pedido
     const orderNumber = `VEM${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
@@ -162,8 +166,8 @@ export async function POST(request: NextRequest) {
       `INSERT INTO orders (
         order_number, user_id, status, payment_status, 
         customer_name, customer_email, customer_phone, shipping_address, 
-        total_amount, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        subtotal, shipping_cost, total_amount, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         orderNumber,
         user?.userId || null,
@@ -173,6 +177,8 @@ export async function POST(request: NextRequest) {
         encryptedCustomerEmail,
         encryptedCustomerPhone,
         encryptedShippingAddress,
+        subtotal,
+        shippingCost || 0.00,
         total
       ]
     );
