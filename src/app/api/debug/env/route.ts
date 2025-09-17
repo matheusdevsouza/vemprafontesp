@@ -9,8 +9,8 @@ export async function GET() {
   const envInfo = {
     nodeEnv: process.env.NODE_ENV,
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
-    databaseUrl: process.env.DATABASE_URL ? '***' : 'undefined',
-    emailUser: process.env.EMAIL_USER ? '***' : 'undefined',
+    databaseUrl: process.env.DATABASE_URL,
+    emailUser: process.env.EMAIL_USER,
     smtpHost: process.env.SMTP_HOST,
     debug: process.env.NEXT_PUBLIC_DEBUG,
     logLevel: process.env.NEXT_PUBLIC_LOG_LEVEL,
