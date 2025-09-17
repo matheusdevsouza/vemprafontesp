@@ -193,8 +193,8 @@ export async function POST(request: NextRequest) {
         items: orderItems.map(item => ({
           id: item.product_id.toString(),
           title: item.product_name,
-          quantity: parseInt(item.quantity),
-          unit_price: parseFloat(item.price)
+          quantity: item.quantity,
+          unit_price: item.price
         })),
         payer: {
           name: customer.name,
