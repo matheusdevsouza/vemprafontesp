@@ -24,13 +24,13 @@ export async function GET(request: NextRequest) {
     // Buscar pedidos com paginação e filtros
     let whereClause = '';
     const params: any[] = [];
-    
+
     if (search) {
       whereClause += ' WHERE (order_number LIKE ? OR customer_name LIKE ? OR customer_email LIKE ?)';
       const searchTerm = `%${search}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
-    
+
     if (status && status !== 'all') {
       if (whereClause) {
         whereClause += ' AND status = ?';
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       }
       params.push(status);
     }
-    
+
     if (paymentStatus && paymentStatus !== 'all') {
       if (whereClause) {
         whereClause += ' AND payment_status = ?';
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       ${whereClause}
       ORDER BY created_at DESC 
       LIMIT ? OFFSET ?
-    `, [...params, limit, offset]);
+    `, [...params, limit.toString(), offset.toString()]);
 
     // Contar total de pedidos para paginação
     const totalResult = await query(`

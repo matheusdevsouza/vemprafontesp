@@ -74,7 +74,7 @@ const createTransporter = () => {
     secure: config.secure,
     auth: {
       user: config.auth.user,
-      pass: config.auth.pass ? '***' : 'undefined'
+      pass: config.auth.pass
     },
     tls: config.tls
   });
