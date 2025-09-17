@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       ${whereClause}
       ORDER BY created_at DESC 
       LIMIT ? OFFSET ?
-    `, [...params, limit, offset]);
+    `, [...params, limit.toString(), offset.toString()]);
 
     // Contar total de pedidos para paginação
     const totalResult = await query(`

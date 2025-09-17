@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       ${whereClause}
       ORDER BY u.created_at DESC 
       LIMIT ? OFFSET ?
-    `, [...params, limit, offset]);
+    `, [...params, limit.toString(), offset.toString()]);
 
     // Contar total de usuários para paginação
     const totalResult = await query(`
