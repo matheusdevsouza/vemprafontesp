@@ -310,13 +310,13 @@ export default function AdminUsers() {
                           <div className="flex-shrink-0 h-10 w-10">
                             <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
                               <span className="text-white font-medium text-sm">
-                                {user.name.charAt(0).toUpperCase()}
+                                {(user.name || 'U').charAt(0).toUpperCase()}
                               </span>
                             </div>
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-white">{user.name}</div>
-                            <div className="text-sm text-gray-400">{user.email}</div>
+                            <div className="text-sm font-medium text-white">{user.name || 'Nome não informado'}</div>
+                            <div className="text-sm text-gray-400">{user.email || 'Email não informado'}</div>
                             {user.phone && (
                               <div className="text-sm text-gray-400">{user.phone}</div>
                             )}
@@ -342,13 +342,13 @@ export default function AdminUsers() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {user.orderCount} pedidos
+                        {user.orderCount || 0} pedidos
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        R$ {user.totalSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {(user.totalSpent || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {user.lastLogin}
+                        {user.lastLogin || 'Nunca'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">

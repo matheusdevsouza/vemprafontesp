@@ -164,9 +164,9 @@ export default function AdminDashboard() {
   const statsCards = [
     {
       title: 'Total de Produtos',
-      value: stats.products.total.toLocaleString('pt-BR'),
-      change: stats.products.lowStockCount > 0 ? `${stats.products.lowStockCount} com estoque baixo` : 'Estoque OK',
-      trend: stats.products.lowStockCount > 0 ? 'down' : 'up',
+      value: stats?.products?.total?.toLocaleString('pt-BR') || '0',
+      change: stats?.products?.lowStockCount > 0 ? `${stats.products.lowStockCount} com estoque baixo` : 'Estoque OK',
+      trend: stats?.products?.lowStockCount > 0 ? 'down' : 'up',
       icon: FaBox,
       color: 'from-primary-500 to-primary-600',
       bgColor: 'bg-primary-500/10',
@@ -174,9 +174,9 @@ export default function AdminDashboard() {
     },
     {
       title: 'Total de Pedidos',
-      value: stats.orders.total.toLocaleString('pt-BR'),
-      change: `${stats.orders.pending} pendentes`,
-      trend: stats.orders.pending > 0 ? 'up' : 'down',
+      value: stats?.orders?.total?.toLocaleString('pt-BR') || '0',
+      change: `${stats?.orders?.pending || 0} pendentes`,
+      trend: (stats?.orders?.pending || 0) > 0 ? 'up' : 'down',
       icon: FaShoppingCart,
       color: 'from-primary-500 to-primary-600',
       bgColor: 'bg-primary-500/10',
@@ -184,8 +184,8 @@ export default function AdminDashboard() {
     },
     {
       title: 'Total de Usuários',
-      value: stats.users.total.toLocaleString('pt-BR'),
-      change: `+${stats.users.newThisPeriod} este período`,
+      value: stats?.users?.total?.toLocaleString('pt-BR') || '0',
+      change: `+${stats?.users?.newThisPeriod || 0} este período`,
       trend: 'up',
       icon: FaUsers,
       color: 'from-primary-500 to-primary-600',
@@ -194,9 +194,9 @@ export default function AdminDashboard() {
     },
     {
       title: 'Receita Total',
-      value: `R$ ${stats.revenue.current.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      change: `${stats.revenue.change >= 0 ? '+' : ''}${stats.revenue.change.toFixed(1)}%`,
-      trend: stats.revenue.changeType,
+      value: `R$ ${stats?.revenue?.current?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}`,
+      change: `${(stats?.revenue?.change || 0) >= 0 ? '+' : ''}${(stats?.revenue?.change || 0).toFixed(1)}%`,
+      trend: stats?.revenue?.changeType || 'up',
       icon: FaDollarSign,
       color: 'from-primary-500 to-primary-600',
       bgColor: 'bg-primary-500/10',
@@ -205,10 +205,10 @@ export default function AdminDashboard() {
   ];
 
   const alerts = [
-    ...(stats.products.lowStockCount > 0 ? [{
+    ...((stats?.products?.lowStockCount || 0) > 0 ? [{
       type: 'warning',
       title: 'Produtos com Estoque Baixo',
-      message: `${stats.products.lowStockCount} produtos precisam de reposição`,
+      message: `${stats?.products?.lowStockCount || 0} produtos precisam de reposição`,
       description: 'Verifique o estoque para evitar indisponibilidade',
       icon: FaExclamationTriangle,
       color: 'text-red-400',
@@ -216,10 +216,10 @@ export default function AdminDashboard() {
       borderColor: 'border-red-500/30',
       iconBg: 'bg-red-500/20'
     }] : []),
-    ...(stats.orders.pending > 0 ? [{
+    ...((stats?.orders?.pending || 0) > 0 ? [{
       type: 'info',
       title: 'Pedidos Pendentes',
-      message: `${stats.orders.pending} pedidos aguardando processamento`,
+      message: `${stats?.orders?.pending || 0} pedidos aguardando processamento`,
       description: 'Atualize o status dos pedidos para manter os clientes informados',
       icon: FaChartLine,
       color: 'text-blue-400',
@@ -327,7 +327,7 @@ export default function AdminDashboard() {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className={`${stats.products.lowStockCount > 0 ? 'lg:col-span-3' : 'lg:col-span-2'} space-y-3`}
+          className={`${(stats?.products?.lowStockCount || 0) > 0 ? 'lg:col-span-3' : 'lg:col-span-2'} space-y-3`}
         >
           {alerts.length > 0 ? (
             alerts.map((alert, index) => (
@@ -385,7 +385,7 @@ export default function AdminDashboard() {
         </div>
         
         <div className="space-y-3">
-          {stats.recentActivity.orders.map((order, index) => (
+          {stats?.recentActivity?.orders?.map((order, index) => (
             <motion.div
               key={`order-${order.id}`}
               variants={itemVariants}
@@ -406,7 +406,7 @@ export default function AdminDashboard() {
             </motion.div>
           ))}
           
-          {stats.recentActivity.products.map((product, index) => (
+          {stats?.recentActivity?.products?.map((product, index) => (
             <motion.div
               key={`product-${product.id}`}
               variants={itemVariants}
@@ -415,14 +415,14 @@ export default function AdminDashboard() {
               <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
               <div className="flex-1 min-w-0">
                 <div className="text-white font-medium text-sm">
-                  {product.name} - {product.brand}
+                  {product.name || 'Produto sem nome'} - {product.brand || 'Marca não informada'}
                 </div>
                 <div className="text-gray-400 text-xs">
-                  R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {(product.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
               </div>
               <div className="text-gray-500 text-xs">
-                {new Date(product.createdAt).toLocaleDateString('pt-BR')}
+                {product.createdAt ? new Date(product.createdAt).toLocaleDateString('pt-BR') : 'Data não disponível'}
               </div>
             </motion.div>
           ))}

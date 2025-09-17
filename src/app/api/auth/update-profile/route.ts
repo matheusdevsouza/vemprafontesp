@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateUser, isAuthenticated } from "@/lib/auth";
 import { getUserById, getPool } from "@/lib/database";
+import { encrypt, encryptPersonalData } from "@/lib/encryption";
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -27,19 +28,19 @@ export async function PATCH(request: NextRequest) {
 
     if (name !== undefined) {
       updateFields.push("name = ?");
-      updateValues.push(name);
+      updateValues.push(encrypt(name));
     }
     if (display_name !== undefined) {
       updateFields.push("display_name = ?");
-      updateValues.push(display_name);
+      updateValues.push(encrypt(display_name));
     }
     if (phone !== undefined) {
       updateFields.push("phone = ?");
-      updateValues.push(phone);
+      updateValues.push(encrypt(phone));
     }
     if (cpf !== undefined) {
       updateFields.push("cpf = ?");
-      updateValues.push(cpf);
+      updateValues.push(encrypt(cpf));
     }
     if (birth_date !== undefined) {
       updateFields.push("birth_date = ?");
@@ -51,7 +52,7 @@ export async function PATCH(request: NextRequest) {
     }
     if (address !== undefined) {
       updateFields.push("address = ?");
-      updateValues.push(address);
+      updateValues.push(encrypt(address));
     }
 
     if (updateFields.length === 0) {

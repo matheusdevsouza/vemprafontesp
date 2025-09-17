@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
 import { getProductById } from '@/lib/database';
 import { authenticateUser, isAdmin } from '@/lib/auth';
+
+const prisma = new PrismaClient();
 
 export async function GET(
   request: NextRequest,
@@ -68,10 +71,24 @@ export async function PATCH(
 
     const body = await request.json();
     
-    // For now, just return success - in a real app you'd implement the update
+    // Atualizar produto no banco de dados
+    const updatedProduct = await prisma.product.update({
+      where: { id: productId },
+      data: {
+        name: body.name,
+        slug: body.name?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+        description: body.description,
+        price: body.price ? parseFloat(body.price) : undefined,
+        stock_quantity: body.stock !== undefined ? parseInt(body.stock) : undefined,
+        sku: body.sku,
+        is_active: body.is_active !== undefined ? body.is_active : undefined
+      }
+    });
+    
     return NextResponse.json({ 
+      success: true,
       message: 'Produto atualizado com sucesso',
-      product: { id: productId, ...body }
+      product: updatedProduct
     });
 
   } catch (error) {
@@ -80,6 +97,8 @@ export async function PATCH(
       { error: 'Erro interno do servidor' },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
 

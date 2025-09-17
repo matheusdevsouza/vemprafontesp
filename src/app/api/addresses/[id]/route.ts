@@ -83,27 +83,19 @@ export async function DELETE(
       return NextResponse.json({ message: "Endereço não encontrado" }, { status: 404 });
     }
 
-    // Se for o endereço padrão, não permitir exclusão se for o único endereço
-    if (existingAddress[0].is_default) {
-      const addressCount = await query(`SELECT COUNT(*) as count FROM addresses WHERE user_id = ?`, [userPayload.userId]);
-
-      if (addressCount[0].count === 1) {
-        return NextResponse.json(
-          { message: "Não é possível excluir o único endereço cadastrado" },
-          { status: 400 }
-        );
-      }
-    }
+    // Permitir exclusão do único endereço se o usuário desejar
+    // Removida a restrição que impedia excluir o único endereço
 
     await query(`DELETE FROM addresses WHERE id = ?`, [addressId]);
 
-    // Se o endereço excluído era padrão, definir o próximo como padrão
+    // Se o endereço excluído era padrão, definir o próximo como padrão (se existir)
     if (existingAddress[0].is_default) {
       const nextAddress = await query(`SELECT * FROM addresses WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`, [userPayload.userId]);
 
       if (nextAddress && nextAddress.length > 0) {
         await query(`UPDATE addresses SET is_default = 1 WHERE id = ?`, [nextAddress[0].id]);
       }
+      // Se não há outros endereços, não há problema - o usuário pode cadastrar um novo
     }
 
     return NextResponse.json({ message: "Endereço excluído com sucesso" });

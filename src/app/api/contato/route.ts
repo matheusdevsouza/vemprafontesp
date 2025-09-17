@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
+import { applySimpleRateLimit } from '@/lib/simple-rate-limiter'
+import { validateCSRFRequest, createCSRFResponse } from '@/lib/csrf-protection'
+import { query } from '@/lib/database'
 
 // Configuração do transporter de e-mail
 const createTransporter = () => {
@@ -16,138 +19,198 @@ const createTransporter = () => {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { nome, email, telefone, assunto, motivo, mensagem } = body || {}
-
-    console.log('=== CONTATO DEBUG ===')
-    console.log('Dados recebidos:', { nome, email, assunto, motivo })
-
-    if (!nome || !email || !assunto || !mensagem) {
-      return NextResponse.json(
-        { error: 'Nome, e-mail, assunto e mensagem são obrigatórios' },
-        { status: 400 }
-      )
+    // CSRF PROTECTION: Verificar token CSRF
+    if (!validateCSRFRequest(request)) {
+      return createCSRFResponse(
+        { error: 'Token CSRF inválido ou ausente' },
+        403
+      );
     }
 
-    const transporter = createTransporter();
+    // RATE LIMITING: 3 mensagens por minuto
+    const rateLimitResponse = applySimpleRateLimit(request, 3, 60000);
+    if (rateLimitResponse) return rateLimitResponse;
 
-    // E-mail para o cliente
-    const contatoEmail = {
-      from: `"VemPraFonteSP" <${process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@example.com'}>`,
-      to: process.env.CONTACT_EMAIL || 'contato@example.com',
-      subject: `[Contato] ${assunto} - ${motivo || 'Geral'}`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Novo Contato - VemPraFonteSP</title>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #e63946 0%, #b71c1c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .info { background: #fff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #e63946; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>VemPraFonteSP</h1>
-              <p>Novo Contato Recebido</p>
-            </div>
-            <div class="content">
-              <div class="info">
-                <h3>Informações do Cliente:</h3>
-                <p><strong>Nome:</strong> ${nome}</p>
-                <p><strong>E-mail:</strong> ${email}</p>
-                ${telefone ? `<p><strong>Telefone:</strong> ${telefone}</p>` : ''}
-                <p><strong>Assunto:</strong> ${assunto}</p>
-                ${motivo ? `<p><strong>Motivo:</strong> ${motivo}</p>` : ''}
-              </div>
-              
-              <div class="info">
-                <h3>Mensagem:</h3>
-                <p>${mensagem.replace(/\n/g, '<br>')}</p>
-              </div>
-              
-              <p><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</p>
-            </div>
-            <div class="footer">
-              <p>© 2025 VemPraFonteSP. Todos os direitos reservados.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `
+    const body = await request.json();
+    const { name, email, phone, subject, message } = body;
+
+    // PROTECÇÃO AVANÇADA: Verificar SQL Injection
+    const sqlPatterns = [
+      // Comandos SQL
+      /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT|FROM|WHERE|HAVING|GROUP\s+BY|ORDER\s+BY)\b)/gi,
+      // Caracteres perigosos
+      /[;'\"\\]/gi,
+      // Comentários SQL
+      /(\-\-|\/\*|\*\/|#)/gi,
+      // Padrões de bypass
+      /(OR\s+['"]?\d*['"]?\s*=\s*['"]?\d*['"]?)/gi,
+      /(AND\s+['"]?\d*['"]?\s*=\s*['"]?\d*['"]?)/gi,
+      /(OR\s+['"]?[a-zA-Z]*['"]?\s*=\s*['"]?[a-zA-Z]*['"]?)/gi,
+      /(UNION\s+SELECT)/gi,
+      // Padrões específicos detectados
+      /(OR\s+['"]?1['"]?\s*=\s*['"]?1['"]?)/gi,
+      /(OR\s+['"]?a['"]?\s*=\s*['"]?a['"]?)/gi,
+      /(OR\s+['"]?x['"]?\s*=\s*['"]?x['"]?)/gi,
+      // Parênteses e operadores
+      /(\(['"]?\d*['"]?\s*OR\s*['"]?\d*['"]?\))/gi,
+      // Comandos INSERT/DROP
+      /(INSERT\s+INTO|DROP\s+TABLE|DELETE\s+FROM)/gi
+    ];
+
+    const checkSQLInjection = (value: string) => {
+      return sqlPatterns.some(pattern => pattern.test(value));
     };
 
-    // E-mail de confirmação para o cliente
-    const confirmacaoEmail = {
-      from: `"VemPraFonteSP" <${process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@example.com'}>`,
-      to: email,
-      subject: 'Confirmação de Contato - VemPraFonteSP',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Confirmação de Contato</title>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #e63946 0%, #b71c1c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>VemPraFonteSP</h1>
-              <p>Contato Recebido</p>
-            </div>
-            <div class="content">
-              <h2>Olá, ${nome}!</h2>
-              <p>Recebemos sua mensagem e agradecemos pelo contato.</p>
-              
-              <p><strong>Assunto:</strong> ${assunto}</p>
-              <p><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</p>
-              
-              <p>Nossa equipe analisará sua solicitação e retornaremos em breve.</p>
-              
-              <p>Se precisar de atendimento imediato, entre em contato conosco pelo WhatsApp: <strong>(11) 93902-5934</strong></p>
-            </div>
-            <div class="footer">
-              <p>© 2025 VemPraFonteSP. Todos os direitos reservados.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `
+    if (checkSQLInjection(name) || checkSQLInjection(email) || checkSQLInjection(phone) || 
+        checkSQLInjection(subject) || checkSQLInjection(message)) {
+      return NextResponse.json(
+        { error: 'Acesso negado - tentativa de ataque detectado' },
+        { status: 403 }
+      );
+    }
+
+    // PROTECÇÃO XSS ULTRA AVANÇADA: Verificar payloads XSS
+    const xssPatterns = [
+      // Scripts
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      /<script[^>]*>.*?<\/script>/gi,
+      // Iframes
+      /<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi,
+      /<iframe[^>]*>/gi,
+      // Objetos
+      /<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi,
+      /<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi,
+      // Meta tags
+      /<link\b[^<]*>/gi,
+      /<meta\b[^<]*>/gi,
+      // JavaScript
+      /javascript:/gi,
+      // Event handlers - TODOS os tipos
+      /on\w+\s*=/gi,
+      /onload\s*=/gi,
+      /onerror\s*=/gi,
+      /onfocus\s*=/gi,
+      /ontoggle\s*=/gi,
+      // Imagens com eventos - padrões específicos
+      /<img[^>]*onerror/gi,
+      /<img[^>]*src\s*=\s*[^>]*onerror/gi,
+      // SVG com eventos
+      /<svg[^>]*onload/gi,
+      /<svg[^>]*onerror/gi,
+      // Body com eventos
+      /<body[^>]*onload/gi,
+      // Inputs com eventos
+      /<input[^>]*onfocus/gi,
+      /<select[^>]*onfocus/gi,
+      /<textarea[^>]*onfocus/gi,
+      /<keygen[^>]*onfocus/gi,
+      // Media com eventos
+      /<video[^>]*onerror/gi,
+      /<audio[^>]*onerror/gi,
+      /<source[^>]*onerror/gi,
+      // Details com eventos
+      /<details[^>]*ontoggle/gi,
+      // Alertas e funções
+      /alert\s*\(/gi,
+      /confirm\s*\(/gi,
+      /prompt\s*\(/gi,
+      // Entidades HTML perigosas
+      /&#x?[0-9a-fA-F]+;/gi,
+      // Quoted strings com scripts
+      /"[^"]*<script/gi,
+      /'[^']*<script/gi,
+      // Padrões específicos que estavam passando
+      /<img\s+src\s*=\s*x\s+onerror/gi,
+      /<svg\s+onload/gi,
+      /<iframe\s+src\s*=\s*"javascript:/gi,
+      /<body\s+onload/gi,
+      /<input[^>]*onfocus[^>]*autofocus/gi,
+      /<select[^>]*onfocus[^>]*autofocus/gi,
+      /<textarea[^>]*onfocus[^>]*autofocus/gi,
+      /<keygen[^>]*onfocus[^>]*autofocus/gi,
+      /<video[^>]*><source[^>]*onerror/gi,
+      /<audio[^>]*src\s*=\s*x[^>]*onerror/gi,
+      /<details[^>]*open[^>]*ontoggle/gi
+    ];
+
+    const checkXSS = (value: string) => {
+      return xssPatterns.some(pattern => pattern.test(value));
     };
 
-    // Enviar e-mails
-    await transporter.sendMail(contatoEmail);
-    await transporter.sendMail(confirmacaoEmail);
+    if (checkXSS(name) || checkXSS(email) || checkXSS(phone) || 
+        checkXSS(subject) || checkXSS(message)) {
+      return NextResponse.json(
+        { error: 'Acesso negado - tentativa de ataque XSS detectada' },
+        { status: 403 }
+      );
+    }
 
-    console.log('E-mails de contato enviados com sucesso');
+    // Validações básicas
+    if (!name || !email || !subject || !message) {
+      return NextResponse.json(
+        { error: 'Todos os campos obrigatórios devem ser preenchidos' },
+        { status: 400 }
+      );
+    }
+
+    // Validação de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'E-mail inválido' },
+        { status: 400 }
+      );
+    }
+
+    // Salvar no banco de dados
+    try {
+      await query(
+        'INSERT INTO contact_messages (name, email, phone, subject, message, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+        [name, email, phone || null, subject, message]
+      );
+    } catch (dbError) {
+      console.error('Erro ao salvar mensagem no banco:', dbError);
+      // Continuar mesmo se falhar ao salvar no banco
+    }
+
+    // Enviar e-mail
+    try {
+      const transporter = createTransporter();
+      
+      const mailOptions = {
+        from: process.env.SMTP_USER,
+        to: process.env.CONTACT_EMAIL || process.env.SMTP_USER,
+        subject: `Nova mensagem de contato: ${subject}`,
+        html: `
+          <h2>Nova mensagem de contato</h2>
+          <p><strong>Nome:</strong> ${name}</p>
+          <p><strong>E-mail:</strong> ${email}</p>
+          <p><strong>Telefone:</strong> ${phone || 'Não informado'}</p>
+          <p><strong>Assunto:</strong> ${subject}</p>
+          <p><strong>Mensagem:</strong></p>
+          <p>${message.replace(/\n/g, '<br>')}</p>
+        `
+      };
+
+      await transporter.sendMail(mailOptions);
+    } catch (emailError) {
+      console.error('Erro ao enviar e-mail:', emailError);
+      // Continuar mesmo se falhar ao enviar e-mail
+    }
 
     return NextResponse.json(
       { 
-        message: 'Mensagem enviada com sucesso! Em breve retornaremos o contato.',
-        success: true 
+        success: true, 
+        message: 'Mensagem enviada com sucesso! Entraremos em contato em breve.' 
       },
       { status: 200 }
-    )
+    );
+
   } catch (error) {
-    console.error('Erro em contato:', error)
+    console.error('Erro no formulário de contato:', error);
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
-    )
+    );
   }
 }

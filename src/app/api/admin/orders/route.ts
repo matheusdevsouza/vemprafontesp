@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { decryptOrderData, decryptCheckoutData, decrypt } from '@/lib/encryption';
+import { query } from '@/lib/database';
+import { decryptForAdmin } from '@/lib/encryption';
 import { authenticateUser } from '@/lib/auth';
-
-const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,153 +13,193 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
     const paymentStatus = searchParams.get('paymentStatus') || '';
-    const dateFilter = searchParams.get('dateFilter') || '';
 
-    const skip = (page - 1) * limit;
-
-    // Construir filtros
-    const where: any = {};
-
+    // Buscar pedidos com paginação e filtros
+    let whereClause = '';
+    const params: any[] = [];
+    
     if (search) {
-      where.OR = [
-        { order_number: { contains: search, mode: 'insensitive' } },
-        { customer_name: { contains: search, mode: 'insensitive' } },
-        { customer_email: { contains: search, mode: 'insensitive' } }
-      ];
+      whereClause += ' WHERE (order_number LIKE ? OR customer_name LIKE ? OR customer_email LIKE ?)';
+      const searchTerm = `%${search}%`;
+      params.push(searchTerm, searchTerm, searchTerm);
     }
-
+    
     if (status && status !== 'all') {
-      where.status = status;
+      if (whereClause) {
+        whereClause += ' AND status = ?';
+      } else {
+        whereClause = ' WHERE status = ?';
+      }
+      params.push(status);
     }
-
+    
     if (paymentStatus && paymentStatus !== 'all') {
-      where.payment_status = paymentStatus;
-    }
-
-    // Filtros de data
-    if (dateFilter) {
-      const now = new Date();
-      switch (dateFilter) {
-        case 'today':
-          where.createdAt = {
-            gte: new Date(now.getFullYear(), now.getMonth(), now.getDate())
-          };
-          break;
-        case 'week':
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          where.createdAt = { gte: weekAgo };
-          break;
-        case 'month':
-          where.createdAt = {
-            gte: new Date(now.getFullYear(), now.getMonth(), 1)
-          };
-          break;
+      if (whereClause) {
+        whereClause += ' AND payment_status = ?';
+      } else {
+        whereClause = ' WHERE payment_status = ?';
       }
+      params.push(paymentStatus);
     }
 
-    // Buscar pedidos com relacionamentos
-    const orders = await prisma.order.findMany({
-      where,
-      select: {
-        id: true,
-        order_number: true,
-        customer_name: true,
-        customer_email: true,
-        total_amount: true,
-        status: true,
-        payment_status: true,
-        createdAt: true,
-        tracking_code: true,
-        tracking_url: true,
-        shipping_company: true,
-        shipping_status: true,
-        items: {
-          select: {
-            id: true,
-            product_name: true,
-            quantity: true,
-            unit_price: true,
-            total_price: true
-          }
-        }
-      },
-      skip,
-      take: limit,
-      orderBy: { createdAt: 'desc' }
-    });
+    const offset = (page - 1) * limit;
+    
+    const orders = await query(`
+      SELECT * FROM orders 
+      ${whereClause}
+      ORDER BY created_at DESC 
+      LIMIT ? OFFSET ?
+    `, [...params, limit, offset]);
 
-    // Contar total de pedidos
-    const total = await prisma.order.count({ where });
+    // Contar total de pedidos para paginação
+    const totalResult = await query(`
+      SELECT COUNT(*) as total FROM orders 
+      ${whereClause}
+    `, params);
+    
+    const totalOrders = totalResult[0].total;
 
-    // Calcular estatísticas
-    const stats = await prisma.order.groupBy({
-      by: ['status'],
-      where: dateFilter === 'month' ? {
-        createdAt: {
-          gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-        }
-      } : {},
-      _count: { status: true }
-    });
+    // Buscar estatísticas de pedidos
+    const [statsResult] = await query(`
+      SELECT 
+        COUNT(*) as totalOrders,
+        SUM(total_amount) as totalRevenue,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pendingCount,
+        COUNT(CASE WHEN status = 'processing' THEN 1 END) as processingCount,
+        COUNT(CASE WHEN status = 'shipped' THEN 1 END) as shippedCount,
+        COUNT(CASE WHEN status = 'delivered' THEN 1 END) as deliveredCount,
+        COUNT(CASE WHEN payment_status = 'pending' THEN 1 END) as paymentPendingCount,
+        COUNT(CASE WHEN payment_status = 'paid' THEN 1 END) as paymentPaidCount
+      FROM orders
+    `);
 
-    const totalRevenue = await prisma.order.aggregate({
-      where: {
-        payment_status: 'paid',
-        ...(dateFilter === 'month' && {
-          createdAt: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-          }
-        })
-      },
-      _sum: { total_amount: true }
-    });
-
-    // Descriptografar dados sensíveis dos pedidos
-    const decryptedOrders = orders.map(order => {
+    // Função para descriptografar dados para o painel admin
+    const decryptForAdminDisplay = (value: string | null, fieldName: string = 'campo') => {
+      if (!value) return null;
+      
+      // Se não parece ser um valor criptografado, retorna como está
+      if (!value.includes(':') || value.split(':').length !== 4) {
+        return value;
+      }
+      
       try {
-        return {
-          ...order,
-          customer_name: order.customer_name ? decrypt(order.customer_name) : order.customer_name,
-          customer_email: order.customer_email ? decrypt(order.customer_email) : order.customer_email
-        };
+        const decrypted = decryptForAdmin({ [fieldName]: value });
+        return decrypted[fieldName];
       } catch (error) {
-        console.warn('Erro ao descriptografar dados do pedido:', order.id, error);
-        return order; // Retorna dados originais se falhar
+        console.warn(`Erro ao descriptografar ${fieldName} para admin:`, error instanceof Error ? error.message : String(error));
+        // Retorna um placeholder mais amigável para o admin
+        return `[${fieldName.toUpperCase()} CRIPTOGRAFADO]`;
       }
-    });
+    };
+
+    // Buscar itens dos pedidos
+    const orderIds = orders.map((order: any) => order.id);
+    let orderItems: any[] = [];
+    
+    if (orderIds.length > 0) {
+      const placeholders = orderIds.map(() => '?').join(',');
+      const [items] = await query(`
+        SELECT 
+          order_id,
+          product_name,
+          quantity,
+          unit_price,
+          total_price,
+          size,
+          color
+        FROM order_items 
+        WHERE order_id IN (${placeholders})
+        ORDER BY order_id, id
+      `, orderIds);
+      
+      // Garantir que orderItems seja sempre um array
+      orderItems = Array.isArray(items) ? items : [];
+    }
+
+    // Agrupar itens por pedido
+    const itemsByOrder = orderItems.reduce((acc: any, item: any) => {
+      if (!acc[item.order_id]) {
+        acc[item.order_id] = [];
+      }
+      acc[item.order_id].push({
+        id: item.order_id,
+        product_name: item.product_name,
+        quantity: parseInt(item.quantity),
+        unit_price: parseFloat(item.unit_price),
+        total_price: parseFloat(item.total_price),
+        size: item.size,
+        color: item.color
+      });
+      return acc;
+    }, {});
+
+    // Descriptografar dados para o painel admin (nome, email, telefone e endereço já estão em texto plano)
+    const decryptedOrders = orders.map((order: any) => ({
+      id: order.id,
+      order_number: order.order_number,
+      customer_name: order.customer_name || 'Cliente não identificado', // Nome já está em texto plano
+      customer_email: order.customer_email, // Email já está em texto plano
+      customer_phone: order.customer_phone, // Telefone já está em texto plano
+      customer_address: order.shipping_address, // Endereço já está em texto plano
+      total_amount: parseFloat(order.total_amount),
+      status: order.status,
+      payment_status: order.payment_status,
+      created_at: order.created_at,
+      updated_at: order.updated_at,
+      tracking_code: order.tracking_code,
+      tracking_url: order.tracking_url,
+      shipping_company: order.shipping_company,
+      shipping_status: order.shipping_status,
+      subtotal: parseFloat(order.subtotal),
+      shipping_cost: parseFloat(order.shipping_cost),
+      items: itemsByOrder[order.id] || []
+    }));
+
+    const stats = {
+      totalOrders: parseInt(statsResult.totalOrders) || 0,
+      totalRevenue: parseFloat(statsResult.totalRevenue) || 0,
+      statusBreakdown: {
+        pending: parseInt(statsResult.pendingCount) || 0,
+        processing: parseInt(statsResult.processingCount) || 0,
+        shipped: parseInt(statsResult.shippedCount) || 0,
+        delivered: parseInt(statsResult.deliveredCount) || 0
+      },
+      paymentBreakdown: {
+        pending: parseInt(statsResult.paymentPendingCount) || 0,
+        paid: parseInt(statsResult.paymentPaidCount) || 0
+      }
+    };
 
     return NextResponse.json({
       success: true,
       data: {
         orders: decryptedOrders,
+        stats: stats,
         pagination: {
           page,
           limit,
-          total,
-          pages: Math.ceil(total / limit)
-        },
-        stats: {
-          totalOrders: total,
-          totalRevenue: totalRevenue._sum.total_amount || 0,
-          statusBreakdown: stats.reduce((acc: any, stat: any) => {
-            if (stat.status) {
-              acc[stat.status] = stat._count.status;
-            }
-            return acc;
-          }, {} as any)
+          total: totalOrders,
+          pages: Math.ceil(totalOrders / limit)
         }
       }
     });
+
   } catch (error) {
     console.error('Erro ao buscar pedidos:', error);
+    console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json(
-      { success: false, error: 'Erro interno do servidor' },
+      { 
+        success: false, 
+        error: 'Erro interno do servidor',
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
+      },
       { status: 500 }
     );
   }
@@ -177,85 +215,12 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    const body = await request.json();
-    
-    const {
-      userId,
-      customer_name,
-      customer_email,
-      customer_phone,
-      shipping_address,
-      items,
-      subtotal,
-      shipping_cost,
-      tax_amount,
-      discount_amount,
-      total_amount,
-      payment_method,
-      notes
-    } = body;
 
-    // Gerar número de pedido único
-    const orderNumber = `VPF-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+    return NextResponse.json(
+      { success: false, error: 'Método não implementado' },
+      { status: 501 }
+    );
 
-    // Criar pedido
-    const order = await prisma.order.create({
-      data: {
-        userId: userId ? parseInt(userId) : null,
-        order_number: orderNumber,
-        customer_name,
-        customer_email,
-        customer_phone,
-        shipping_address,
-        subtotal: parseFloat(subtotal),
-        shipping_cost: shipping_cost ? parseFloat(shipping_cost) : 0,
-        tax_amount: tax_amount ? parseFloat(tax_amount) : 0,
-        discount_amount: discount_amount ? parseFloat(discount_amount) : 0,
-        total_amount: parseFloat(total_amount),
-        payment_method,
-        notes,
-        status: 'pending',
-        payment_status: 'pending'
-      }
-    });
-
-    // Criar itens do pedido
-    if (items && items.length > 0) {
-      const orderItems = items.map((item: any) => ({
-        orderId: order.id,
-        productId: parseInt(item.productId),
-        variant_id: item.variant_id ? parseInt(item.variant_id) : null,
-        product_name: item.product_name,
-        product_sku: item.product_sku,
-        size: item.size,
-        color: item.color,
-        quantity: parseInt(item.quantity),
-        unit_price: parseFloat(item.unit_price),
-        total_price: parseFloat(item.total_price)
-      }));
-
-      await prisma.orderItem.createMany({
-        data: orderItems
-      });
-    }
-
-    // Buscar pedido completo com itens
-    const completeOrder = await prisma.order.findUnique({
-      where: { id: order.id },
-      include: {
-        items: {
-          include: {
-            product: true
-          }
-        }
-      }
-    });
-
-    return NextResponse.json({
-      success: true,
-      data: completeOrder,
-      message: 'Pedido criado com sucesso'
-    });
   } catch (error) {
     console.error('Erro ao criar pedido:', error);
     return NextResponse.json(
@@ -264,6 +229,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-
-

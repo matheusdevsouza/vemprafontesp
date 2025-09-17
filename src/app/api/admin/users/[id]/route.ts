@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { authenticateUser, isAdmin } from '@/lib/auth';
+import { decryptSingleUserForAdmin } from '@/lib/encryption';
 
 export async function GET(
   request: NextRequest,
@@ -32,7 +33,7 @@ export async function GET(
       );
     }
 
-    const user = await prisma.user.findUnique({
+    const targetUser = await prisma.user.findUnique({
       where: { id },
       select: {
         id: true,
@@ -81,40 +82,47 @@ export async function GET(
       }
     });
 
-    if (!user) {
+    if (!targetUser) {
       return NextResponse.json(
         { success: false, error: 'Usuário não encontrado' },
         { status: 404 }
       );
     }
 
-    // Formatar dados do usuário
+    // DESCRIPTOGRAFIA INTELIGENTE E AUTOMÁTICA PARA ADMIN
+    console.log(`🔓 Descriptografando usuário ${targetUser.id} para visualização detalhada do admin...`);
+    const decryptedUser = decryptSingleUserForAdmin(targetUser);
+    
+    // Formatar dados do usuário (já descriptografados)
     const formattedUser = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone || '',
-      cpf: user.cpf || '',
-      birth_date: user.birth_date,
-      gender: user.gender,
-      is_admin: user.is_admin,
-      is_active: user.is_active,
-      email_verified: !!user.email_verified_at,
-      last_login: user.last_login,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      id: decryptedUser.id,
+      uuid: decryptedUser.user_uuid, // Incluir UUID para maior segurança
+      name: decryptedUser.name,
+      email: decryptedUser.email,
+      phone: decryptedUser.phone || '',
+      cpf: decryptedUser.cpf || '',
+      birth_date: decryptedUser.birth_date,
+      gender: decryptedUser.gender,
+      is_admin: decryptedUser.is_admin,
+      is_active: decryptedUser.is_active,
+      email_verified: !!decryptedUser.email_verified_at,
+      last_login: decryptedUser.last_login,
+      createdAt: decryptedUser.createdAt,
+      updatedAt: decryptedUser.updatedAt,
       stats: {
-        total_orders: user._count.orders,
-        total_addresses: user._count.addresses
+        total_orders: decryptedUser._count.orders,
+        total_addresses: decryptedUser._count.addresses
       },
-      recent_orders: user.orders.map((order: any) => ({
+      recent_orders: decryptedUser.orders.map((order: any) => ({
         id: order.id,
         order_number: order.order_number,
         total_amount: Number(order.total_amount),
         status: order.status,
         createdAt: order.createdAt
       })),
-      addresses: user.addresses
+      addresses: decryptedUser.addresses,
+      // Metadados de descriptografia (apenas para debug em desenvolvimento)
+      _admin_decryption: decryptedUser._admin_decryption
     };
 
     return NextResponse.json({

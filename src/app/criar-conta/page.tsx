@@ -193,7 +193,7 @@ export default function CriarContaPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <label htmlFor="name" className="text-gray-300 font-semibold">Nome Completo *</label>
+            <label htmlFor="name" className="text-gray-300 font-semibold">Nome *</label>
             <input
               id="name"
               name="name"
@@ -203,7 +203,7 @@ export default function CriarContaPage() {
               value={formData.name}
               onChange={handleChange}
               className="px-4 py-3 rounded-lg border-2 border-dark-700 bg-dark-800 text-white focus:border-primary-500 outline-none transition-all"
-              placeholder="Digite seu nome completo"
+              placeholder="Digite seu nome"
               minLength={2}
             />
           </div>

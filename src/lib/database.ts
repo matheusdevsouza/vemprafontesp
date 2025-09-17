@@ -10,6 +10,7 @@ import {
   decryptOrderData,
   hashUserId,
   verifyUserIdHash,
+  searchUserByEmail,
   ENCRYPTION_ENABLED
 } from './encryption'
 
@@ -510,37 +511,18 @@ export async function createUser(userData: CreateUserData): Promise<any> {
 }
 
 export async function getUserByEmail(email: string): Promise<any> {
-  // Se a criptografia estiver habilitada, tentar buscar com email criptografado primeiro
-  if (ENCRYPTION_ENABLED) {
-    try {
-      const encryptedEmail = encryptPersonalData({ email }).email;
-      const sql = `SELECT * FROM users WHERE email = ? AND is_active = 1`;
-      const result = await query(sql, [encryptedEmail]);
-      
-      if (result[0]) {
-        // Descriptografar dados sensíveis antes de retornar
-        return decryptPersonalData(result[0]);
-      }
-    } catch (error) {
-      console.warn('Erro ao buscar com email criptografado, tentando sem criptografia:', error);
-    }
-  }
-  
-  // Fallback: buscar com email original (para dados não criptografados)
+  // Email fica em texto plano para busca funcionar
   const sql = `SELECT * FROM users WHERE email = ? AND is_active = 1`;
   const result = await query(sql, [email]);
   
   if (result[0]) {
-    // Se a criptografia estiver habilitada, tentar descriptografar
-    if (ENCRYPTION_ENABLED) {
-      try {
-        return decryptPersonalData(result[0]);
-      } catch (error) {
-        console.warn('Erro ao descriptografar dados do usuário, retornando dados originais:', error);
-        return result[0];
-      }
+    // Descriptografar outros campos sensíveis (email já está em texto plano)
+    try {
+      return decryptPersonalData(result[0]);
+    } catch (error) {
+      console.warn('Erro ao descriptografar dados do usuário, retornando dados originais:', error);
+      return result[0];
     }
-    return result[0];
   }
   
   return null;
@@ -551,16 +533,31 @@ export async function getUserById(id: number): Promise<any> {
   const result = await query(sql, [id]);
   
   if (result[0]) {
-    // Se a criptografia estiver habilitada, tentar descriptografar
-    if (ENCRYPTION_ENABLED) {
-      try {
-        return decryptPersonalData(result[0]);
-      } catch (error) {
-        console.warn('Erro ao descriptografar dados do usuário, retornando dados originais:', error);
-        return result[0];
-      }
+    // TRANSPARÊNCIA TOTAL: Sempre descriptografar dados do usuário
+    try {
+      return decryptPersonalData(result[0]);
+    } catch (error) {
+      console.warn('Erro ao descriptografar dados do usuário:', error instanceof Error ? error.message : String(error));
+      return result[0]; // Retornar dados originais em caso de erro
     }
-    return result[0];
+  }
+  
+  return null;
+}
+
+// Nova função para buscar usuário por UUID (mais segura)
+export async function getUserByUuid(uuid: string): Promise<any> {
+  const sql = `SELECT * FROM users WHERE user_uuid = ? AND is_active = 1`;
+  const result = await query(sql, [uuid]);
+  
+  if (result[0]) {
+    // TRANSPARÊNCIA TOTAL: Sempre descriptografar dados do usuário
+    try {
+      return decryptPersonalData(result[0]);
+    } catch (error) {
+      console.warn('Erro ao descriptografar dados do usuário:', error instanceof Error ? error.message : String(error));
+      return result[0]; // Retornar dados originais em caso de erro
+    }
   }
   
   return null;
@@ -834,7 +831,7 @@ export async function getModelBySlug(slug: string): Promise<any | null> {
         description: 'Futurístico Air Max DN com design inovador. O futuro do conforto e da tecnologia Nike.'
       },
       'air-max-plus-dn8': {
-        image: '/images/modelos/Air Max DN.webp',
+        image: '/images/modelos/Air Max DN8.webp',
         description: 'Air Max Plus DN8 com design inovador e tecnologia de ponta. A evolução do conforto e estilo Nike.'
       },
       'mizuno-prophecy-6': {

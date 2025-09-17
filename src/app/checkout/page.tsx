@@ -122,7 +122,7 @@ export default function CheckoutPage() {
     if (currentStep === 1) {
       // Validar campos obrigatórios da etapa 1
       const requiredFields = {
-        name: 'Nome Completo',
+        name: 'Nome',
         email: 'E-mail',
         emailConfirm: 'Confirmação de E-mail',
         phone: 'Telefone',
@@ -481,7 +481,7 @@ export default function CheckoutPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-gray-300 mb-2">Nome Completo <span className="text-red-400">*</span></label>
+                      <label className="block text-gray-300 mb-2">Nome <span className="text-red-400">*</span></label>
                       <input
                         type="text"
                         value={customerData.name}
@@ -489,7 +489,7 @@ export default function CheckoutPage() {
                         className={`w-full px-4 py-3 bg-dark-800 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-primary-500 ${
                           customerData.name.trim() === '' ? 'border-red-500' : 'border-dark-700'
                         }`}
-                        placeholder="Seu nome completo"
+                        placeholder="Seu nome"
                         required
                       />
                     </div>

@@ -1,0 +1,451 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int               @id @default(autoincrement())
+  name              String            @db.VarChar(255)
+  email             String            @unique(map: "email") @db.VarChar(255)
+  email_verified_at DateTime?         @db.Timestamp(0)
+  password          String?           @db.VarChar(255)
+  phone             String?           @db.VarChar(20)
+  cpf               String?           @db.VarChar(14)
+  birth_date        DateTime?         @db.Date
+  gender            users_gender?
+  address           String?           @db.Text
+  display_name      String?           @db.VarChar(255)
+  is_active         Boolean?          @default(true)
+  last_login        DateTime?         @db.Timestamp(0)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  is_admin          Boolean           @default(false)
+  addresses         addresses[]
+  orders            Order[]
+  product_reviews   product_reviews[]
+
+  @@map("users")
+}
+
+model Category {
+  id            Int             @id @default(autoincrement())
+  name          String          @db.VarChar(100)
+  slug          String          @unique(map: "slug") @db.VarChar(100)
+  description   String?         @db.Text
+  image_url     String?         @db.VarChar(500)
+  is_active     Boolean?        @default(true)
+  sort_order    Int?            @default(0)
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt     DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  products      Product[]
+  subcategories subcategories[]
+
+  @@map("categories")
+}
+
+model Product {
+  id                Int                @id @default(autoincrement())
+  brand_id          Int
+  categoryId        Int                @map("category_id")
+  subcategory_id    Int?
+  model_id          Int?               @map("model_id")
+  name              String             @db.VarChar(255)
+  slug              String             @unique(map: "slug") @db.VarChar(255)
+  description       String?            @db.Text
+  short_description String?            @db.VarChar(500)
+  sku               String?            @unique(map: "sku") @db.VarChar(100)
+  price             Decimal            @db.Decimal(10, 2)
+  original_price    Decimal?           @db.Decimal(10, 2)
+  cost_price        Decimal?           @db.Decimal(10, 2)
+  stock_quantity    Int?               @default(0)
+  min_stock_level   Int?               @default(5)
+  weight            Decimal?           @db.Decimal(8, 2)
+  dimensions_length Decimal?           @db.Decimal(8, 2)
+  dimensions_width  Decimal?           @db.Decimal(8, 2)
+  dimensions_height Decimal?           @db.Decimal(8, 2)
+  is_featured       Boolean?           @default(false)
+  is_new            Boolean?           @default(false)
+  is_bestseller     Boolean?           @default(false)
+  is_active         Boolean?           @default(true)
+  meta_title        String?            @db.VarChar(255)
+  meta_description  String?            @db.VarChar(500)
+  rating            Decimal?           @default(0.00) @db.Decimal(3, 2)
+  review_count      Int?               @default(0)
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt         DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  care_instructions String?            @db.Text
+  color             String?            @db.VarChar(50)
+  color_hex         String?            @db.VarChar(7)
+  orderItems        OrderItem[]
+  product_images    product_images[]
+  product_reviews   product_reviews[]
+  product_variants  product_variants[]
+  brands            brands             @relation(fields: [brand_id], references: [id], onUpdate: Restrict, map: "products_ibfk_1")
+  category          Category           @relation(fields: [categoryId], references: [id], onUpdate: Restrict, map: "products_ibfk_2")
+  subcategories     subcategories?     @relation(fields: [subcategory_id], references: [id], onUpdate: Restrict, map: "products_ibfk_3")
+  model             Model?             @relation(fields: [model_id], references: [id], onUpdate: Restrict, onDelete: SetNull, map: "fk_products_model")
+
+  @@index([is_active], map: "idx_products_active")
+  @@index([brand_id], map: "idx_products_brand")
+  @@index([categoryId], map: "idx_products_category")
+  @@index([is_featured], map: "idx_products_featured")
+  @@index([model_id], map: "idx_products_model")
+  @@index([price], map: "idx_products_price")
+  @@index([rating], map: "idx_products_rating")
+  @@index([sku], map: "idx_products_sku")
+  @@index([slug], map: "idx_products_slug")
+  @@index([subcategory_id], map: "idx_products_subcategory")
+  @@map("products")
+}
+
+model Order {
+  id                 Int                    @id @default(autoincrement())
+  userId             Int?                   @map("user_id")
+  order_number       String                 @unique(map: "order_number") @db.VarChar(50)
+  external_reference String?                @db.VarChar(100)
+  status             orders_status?         @default(pending)
+  payment_status     orders_payment_status? @default(pending)
+  payment_method     String?                @db.VarChar(50)
+  payment_id         String?                @db.VarChar(100)
+  subtotal           Decimal                @db.Decimal(10, 2)
+  shipping_cost      Decimal?               @default(0.00) @db.Decimal(10, 2)
+  tax_amount         Decimal?               @default(0.00) @db.Decimal(10, 2)
+  discount_amount    Decimal?               @default(0.00) @db.Decimal(10, 2)
+  total_amount       Decimal                @db.Decimal(10, 2)
+  currency           String?                @default("BRL") @db.VarChar(3)
+  customer_name      String?                @db.VarChar(255)
+  customer_email     String?                @db.VarChar(255)
+  customer_phone     String?                @db.VarChar(20)
+  shipping_address   String?                @db.Text
+  notes              String?                @db.Text
+  shipped_at         DateTime?              @db.Timestamp(0)
+  delivered_at       DateTime?              @db.Timestamp(0)
+  tracking_code      String?                @db.VarChar(100)
+  tracking_url       String?                @db.VarChar(500)
+  shipping_company   String?                @db.VarChar(100)
+  shipping_status    String?                @db.VarChar(50)
+  shipping_notes     String?                @db.Text
+  createdAt          DateTime               @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt          DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  items              OrderItem[]
+  user               User?                  @relation(fields: [userId], references: [id], onUpdate: Restrict, map: "orders_ibfk_1")
+  product_reviews    product_reviews[]
+
+  @@index([createdAt], map: "idx_orders_date")
+  @@index([external_reference], map: "idx_orders_external_ref")
+  @@index([payment_status], map: "idx_orders_payment_status")
+  @@index([status], map: "idx_orders_status")
+  @@index([userId], map: "idx_orders_user")
+  @@map("orders")
+}
+
+model OrderItem {
+  id               Int               @id @default(autoincrement())
+  orderId          Int               @map("order_id")
+  productId        Int               @map("product_id")
+  variant_id       Int?
+  product_name     String            @db.VarChar(255)
+  product_sku      String?           @db.VarChar(100)
+  size             String?           @db.VarChar(20)
+  color            String?           @db.VarChar(50)
+  quantity         Int
+  unit_price       Decimal           @db.Decimal(10, 2)
+  total_price      Decimal           @db.Decimal(10, 2)
+  created_at       DateTime          @default(now()) @db.Timestamp(0)
+  order            Order             @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "order_items_ibfk_1")
+  product          Product           @relation(fields: [productId], references: [id], onUpdate: Restrict, map: "order_items_ibfk_2")
+  product_variants product_variants? @relation(fields: [variant_id], references: [id], onUpdate: Restrict, map: "order_items_ibfk_3")
+
+  @@index([orderId], map: "order_id")
+  @@index([productId], map: "product_id")
+  @@index([variant_id], map: "variant_id")
+  @@map("order_items")
+}
+
+model Banner {
+  id               Int               @id @default(autoincrement())
+  title            String            @db.VarChar(255)
+  subtitle         String?           @db.VarChar(500)
+  description      String?           @db.Text
+  image_url        String            @db.VarChar(500)
+  mobile_image_url String?           @db.VarChar(500)
+  link_url         String?           @db.VarChar(500)
+  button_text      String?           @db.VarChar(100)
+  position         banners_position? @default(hero)
+  is_active        Boolean?          @default(true)
+  sort_order       Int?              @default(0)
+  start_date       DateTime?         @db.Timestamp(0)
+  end_date         DateTime?         @db.Timestamp(0)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt        DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+
+  @@map("banners")
+}
+
+model HeroBackground {
+  id               Int      @id @default(autoincrement())
+  title            String   @db.VarChar(255)
+  subtitle         String?  @db.VarChar(500)
+  description      String?  @db.Text
+  background_image String   @db.VarChar(500)
+  background_video String?  @db.VarChar(500)
+  overlay_color    String?  @default("#000000") @db.VarChar(7)
+  overlay_opacity  Decimal? @default(0.50) @db.Decimal(3, 2)
+  text_color       String?  @default("#FFFFFF") @db.VarChar(7)
+  ctaText          String?  @map("cta_text") @db.VarChar(100)
+  ctaLink          String?  @map("cta_link") @db.VarChar(500)
+  is_active        Boolean? @default(true)
+  sort_order       Int?     @default(0)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+
+  @@map("hero_backgrounds")
+}
+
+model Model {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(255)
+  slug        String    @unique(map: "slug") @db.VarChar(255)
+  description String?   @db.Text
+  image_url   String?   @db.VarChar(500)
+  use_blob    Boolean?  @default(false)
+  sort_order  Int?      @default(0)
+  is_active   Boolean?  @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  products    Product[]
+
+  @@index([is_active], map: "idx_is_active")
+  @@index([slug], map: "idx_slug")
+  @@index([sort_order], map: "idx_sort_order")
+  @@map("models")
+}
+
+model addresses {
+  id           Int      @id @default(autoincrement())
+  user_id      Int
+  name         String?  @db.VarChar(100)
+  street       String   @db.VarChar(255)
+  number       String   @db.VarChar(20)
+  complement   String?  @db.VarChar(100)
+  neighborhood String   @db.VarChar(100)
+  city         String   @db.VarChar(100)
+  state        String   @db.VarChar(2)
+  zip_code     String   @db.VarChar(10)
+  is_default   Boolean? @default(false)
+  created_at   DateTime @default(now()) @db.Timestamp(0)
+  updated_at   DateTime @default(now()) @db.Timestamp(0)
+  users        User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "addresses_ibfk_1")
+
+  @@index([user_id], map: "user_id")
+}
+
+model brands {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique(map: "name") @db.VarChar(100)
+  slug        String    @unique(map: "slug") @db.VarChar(100)
+  logo_url    String?   @db.VarChar(500)
+  description String?   @db.Text
+  is_active   Boolean?  @default(true)
+  created_at  DateTime  @default(now()) @map("created_at") @db.Timestamp(0)
+  updated_at  DateTime  @default(now()) @map("updated_at") @db.Timestamp(0)
+  website     String?   @db.VarChar(255)
+  products    Product[]
+
+  @@index([slug], map: "idx_brands_slug")
+}
+
+model coupons {
+  id               Int          @id @default(autoincrement())
+  code             String       @unique(map: "code") @db.VarChar(50)
+  name             String       @db.VarChar(255)
+  description      String?      @db.Text
+  type             coupons_type
+  value            Decimal      @db.Decimal(10, 2)
+  minimum_amount   Decimal?     @default(0.00) @db.Decimal(10, 2)
+  maximum_discount Decimal?     @db.Decimal(10, 2)
+  usage_limit      Int?
+  usage_count      Int?         @default(0)
+  is_active        Boolean?     @default(true)
+  start_date       DateTime?    @db.Timestamp(0)
+  end_date         DateTime?    @db.Timestamp(0)
+  created_at       DateTime     @default(now()) @db.Timestamp(0)
+  updated_at       DateTime     @default(now()) @db.Timestamp(0)
+}
+
+model model_photos {
+  id             Int            @id @default(autoincrement())
+  subcategory_id Int?
+  model_name     String         @db.VarChar(255)
+  image_url      String         @db.VarChar(500)
+  caption        String?        @db.VarChar(500)
+  photographer   String?        @db.VarChar(255)
+  is_featured    Boolean?       @default(false)
+  is_active      Boolean?       @default(true)
+  sort_order     Int?           @default(0)
+  created_at     DateTime       @default(now()) @db.Timestamp(0)
+  updated_at     DateTime       @default(now()) @db.Timestamp(0)
+  subcategories  subcategories? @relation(fields: [subcategory_id], references: [id], onUpdate: Restrict, map: "model_photos_ibfk_1")
+
+  @@index([subcategory_id], map: "subcategory_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model product_images {
+  id               Int               @id @default(autoincrement())
+  product_id       Int
+  variant_id       Int?
+  image_url        String?           @db.VarChar(500)
+  file_name        String?           @db.VarChar(255)
+  alt_text         String?           @db.VarChar(255)
+  is_primary       Boolean?          @default(false)
+  sort_order       Int?              @default(0)
+  created_at       DateTime          @default(now()) @db.Timestamp(0)
+  file_size        Int?
+  image_blob       Bytes?
+  mime_type        String?           @db.VarChar(100)
+  use_blob         Boolean?          @default(false)
+  products         Product           @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "product_images_ibfk_1")
+  product_variants product_variants? @relation(fields: [variant_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "product_images_ibfk_2")
+
+  @@index([use_blob, is_primary], map: "idx_product_images_blob")
+  @@index([product_id], map: "product_id")
+  @@index([variant_id], map: "variant_id")
+}
+
+model product_reviews {
+  id                   Int      @id @default(autoincrement())
+  product_id           Int
+  order_id             Int?
+  user_id              Int?
+  reviewer_name        String   @db.VarChar(255)
+  reviewer_email       String?  @db.VarChar(255)
+  rating               Int
+  title                String?  @db.VarChar(255)
+  comment              String?  @db.Text
+  is_verified_purchase Boolean? @default(false)
+  is_approved          Boolean? @default(false)
+  is_featured          Boolean? @default(false)
+  helpful_count        Int?     @default(0)
+  created_at           DateTime @default(now()) @db.Timestamp(0)
+  updated_at           DateTime @default(now()) @db.Timestamp(0)
+  products             Product  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "product_reviews_ibfk_1")
+  orders               Order?   @relation(fields: [order_id], references: [id], onUpdate: Restrict, map: "product_reviews_ibfk_2")
+  users                User?    @relation(fields: [user_id], references: [id], onUpdate: Restrict, map: "product_reviews_ibfk_3")
+
+  @@index([is_approved], map: "idx_reviews_approved")
+  @@index([product_id], map: "idx_reviews_product")
+  @@index([rating], map: "idx_reviews_rating")
+  @@index([user_id], map: "idx_reviews_user")
+  @@index([order_id], map: "order_id")
+}
+
+model product_variants {
+  id             Int              @id @default(autoincrement())
+  product_id     Int
+  size           String?          @db.VarChar(20)
+  color          String?          @db.VarChar(50)
+  color_hex      String?          @db.VarChar(7)
+  sku            String?          @db.VarChar(100)
+  price          Decimal?         @db.Decimal(10, 2)
+  stock_quantity Int?             @default(0)
+  is_active      Boolean?         @default(true)
+  created_at     DateTime         @default(now()) @db.Timestamp(0)
+  updated_at     DateTime         @default(now()) @db.Timestamp(0)
+  order_items    OrderItem[]
+  product_images product_images[]
+  products       Product          @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "product_variants_ibfk_1")
+
+  @@unique([product_id, size, color], map: "unique_variant")
+}
+
+model site_settings {
+  id            Int                         @id @default(autoincrement())
+  setting_key   String                      @unique(map: "setting_key") @db.VarChar(100)
+  setting_value String?                     @db.Text
+  setting_type  site_settings_setting_type? @default(text)
+  description   String?                     @db.VarChar(500)
+  is_public     Boolean?                    @default(false)
+  created_at    DateTime                    @default(now()) @db.Timestamp(0)
+  updated_at    DateTime                    @default(now()) @db.Timestamp(0)
+}
+
+model subcategories {
+  id           Int            @id @default(autoincrement())
+  category_id  Int
+  name         String         @db.VarChar(150)
+  slug         String         @unique(map: "slug") @db.VarChar(150)
+  description  String?        @db.Text
+  image_url    String?        @db.VarChar(500)
+  is_active    Boolean?       @default(true)
+  sort_order   Int?           @default(0)
+  created_at   DateTime       @default(now()) @db.Timestamp(0)
+  updated_at   DateTime       @default(now()) @db.Timestamp(0)
+  model_photos model_photos[]
+  products     Product[]
+  categories   Category       @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "subcategories_ibfk_1")
+
+  @@index([category_id], map: "category_id")
+}
+
+model testimonials {
+  id                Int      @id @default(autoincrement())
+  customer_name     String   @db.VarChar(255)
+  customer_location String?  @db.VarChar(255)
+  customer_avatar   String?  @db.VarChar(500)
+  rating            Int
+  title             String?  @db.VarChar(255)
+  content           String   @db.Text
+  is_featured       Boolean? @default(false)
+  is_active         Boolean? @default(true)
+  sort_order        Int?     @default(0)
+  created_at        DateTime @default(now()) @db.Timestamp(0)
+  updated_at        DateTime @default(now()) @db.Timestamp(0)
+}
+
+enum site_settings_setting_type {
+  text
+  number
+  boolean
+  json
+  file
+}
+
+enum coupons_type {
+  percentage
+  fixed
+}
+
+enum orders_status {
+  pending
+  paid
+  processing
+  shipped
+  delivered
+  cancelled
+  refunded
+}
+
+enum orders_payment_status {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum banners_position {
+  hero
+  secondary
+  sidebar
+  footer
+}
+
+enum users_gender {
+  M
+  F
+  Other
+}

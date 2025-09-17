@@ -1,117 +1,195 @@
-# Dependencies
+# ===========================================
+# 🔒 GITIGNORE ROBUSTO - VEM PRA FONTE SP
+# ===========================================
+# Este arquivo garante que NENHUM dado sensível vaze para o repositório
+# Última atualização: $(date)
+
+# ===========================================
+# 🚨 CRÍTICO - DADOS SENSÍVEIS (NUNCA COMMITAR)
+# ===========================================
+
+# Environment Variables - TODAS as variaveis de ambiente
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.prod
+.env.local.prod
+.env.example
+env.example
+*.env
+*.env.*
+
+# Chaves e Certificados de Segurança
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+private/certificates/
+ssl/
+certificates/
+keys/
+
+# Configurações de Banco de Dados
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+database/*.sql
+database_backup_*.sql
+*.backup.sql
+private/database/
+database/
+prisma/dev.db
+prisma/prod.db
+
+# ===========================================
+# 📦 DEPENDÊNCIAS E BUILD
+# ===========================================
+
+# Node.js Dependencies
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
+.npm
+.yarn-integrity
+.yarn/
+.pnp.*
 
-# Production builds
+# Next.js Build Output
 .next/
 out/
 dist/
 build/
+.vercel/
 
-# Environment variables (CRÍTICO - dados sensíveis)
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.*.local
-.env.prod
-.env.local.prod
-.env.example
-env.example
+# TypeScript
+*.tsbuildinfo
+.tsbuildinfo
 
-# Database files (dados sensíveis)
-*.db
-*.sqlite
-*.sqlite3
-prisma/dev.db
-database/*.sql
-private/database/backups/
-private/database/dumps/
+# ===========================================
+# 🔐 CONFIGURAÇÕES E DADOS SENSÍVEIS
+# ===========================================
 
-# Pastas específicas do projeto (CRÍTICO - não commitar)
-node_modules/
-.next/
-prisma/
-private/
+# Configurações de Produção
+config/production.js
+config/local.js
+config/development.js
+private/config/
+production.config.*
+local.config.*
 
-# Logs
+# PM2 e Process Managers
+ecosystem.config.js
+pm2.config.js
+process.json
+
+# Logs (podem conter dados sensíveis)
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+private/logs/
 
-# Runtime data
-pids/
-*.pid
-*.seed
-*.pid.lock
+# ===========================================
+# 📁 PASTAS CRÍTICAS DO PROJETO
+# ===========================================
 
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
+# Pasta privada (dados sensíveis)
+private/
+uploads/
+temp_emails/
+emails/
+tests/
+scripts/
+docs/
 
-# nyc test coverage
-.nyc_output
+# Uploads de usuários (dados pessoais)
+public/uploads/
+private/uploads/
+uploads/
+temp_uploads/
 
-# Dependency directories
-jspm_packages/
+# Arquivos temporários de desenvolvimento
+temp_*.html
+temp_*.js
+temp_*.ts
+temp_*.txt
+temp_*.json
+temp_*.sql
 
-# TypeScript cache
-*.tsbuildinfo
+# ===========================================
+# 🧪 ARQUIVOS DE TESTE E DESENVOLVIMENTO
+# ===========================================
 
-# Optional npm cache directory
-.npm
+# Arquivos de teste
+test-*.js
+test-*.ts
+test-*.json
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+__tests__/
+tests/
+test/
 
-# Optional eslint cache
-.eslintcache
+# Scripts de desenvolvimento
+scripts/
+dev-scripts/
+migration-scripts/
 
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
+# Documentação local
+docs/
+documentation/
+*.md.backup
 
-# Optional REPL history
-.node_repl_history
+# ===========================================
+# 🗄️ BANCO DE DADOS E MIGRAÇÕES
+# ===========================================
 
-# Output of 'npm pack'
-*.tgz
+# Prisma
+prisma/migrations/
+prisma/dev.db*
+prisma/prod.db*
+prisma/*.db
 
-# Yarn Integrity file
-.yarn-integrity
+# Backup files
+*.backup
+*.bak
+*.backup2
+*.bak_*
+backup_*
+*_backup.*
 
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
+# Database dumps
+*.dump
+*.sql.gz
+*.sql.zip
 
-# Next.js build output (já incluído acima)
+# ===========================================
+# 💻 AMBIENTE DE DESENVOLVIMENTO
+# ===========================================
 
-# Nuxt.js build / generate output
-.nuxt
-dist
-
-# Storybook build outputs
-.out
-.storybook-out
-
-# Temporary folders
-tmp/
-temp/
-
-# Editor directories and files
+# IDEs e Editores
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.sublime-*
 
-# OS generated files
+# Sistema Operacional
 .DS_Store
 .DS_Store?
 ._*
@@ -119,76 +197,188 @@ temp/
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# Uploads directory (dados de usuários)
-public/uploads/
-private/uploads/
-uploads/
-
-# Email logs and temp files
-temp_emails/
-emails/
-
-# SSL certificates (dados sensíveis)
-private/certificates/
-*.pem
-*.key
-*.crt
-*.p12
-
-# Backup files (mantidos localmente, ignorados no git)
-*.backup
-*.bak
-*.backup2
-*.bak_*
-
-# Config files with sensitive data
-config/production.js
-config/local.js
-private/config/
-
-# Test files (movidos para pasta tests/)
-tests/
-
-# Scripts de desenvolvimento (movidos para pasta scripts/)
-scripts/
-
-# Documentation (movidos para pasta docs/)
-docs/
-
-# PM2 ecosystem file (contém dados sensíveis)
-ecosystem.config.js
-
-# Database migrations (manter apenas estrutura, não dados)
-# prisma/migrations/ (comentado - pode conter dados sensíveis)
-
-# Arquivos temporários de desenvolvimento
-temp_*.html
-temp_*.js
-temp_*.txt
-
-# Arquivos de teste específicos do projeto
-test-*.js
-test-*.ts
-
-# Arquivos de configuração específicos do ambiente
-next.config.js.backup
-middleware.ts.backup
-
-# Arquivos de sistema
-ystemctl*
-
-# Cache do Next.js
+# Cache e Arquivos Temporários
+.cache/
+.parcel-cache/
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
 .next/cache/
 
-# Arquivos de build do TypeScript
-tsconfig.tsbuildinfo
+# ===========================================
+# 🔧 FERRAMENTAS DE DESENVOLVIMENTO
+# ===========================================
+
+# ESLint
+.eslintcache
+.eslintrc.local.*
+
+# Prettier
+.prettierrc.local.*
+
+# Coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Runtime
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
 
 # ===========================================
-# PASTAS CRÍTICAS - NUNCA COMMITAR
+# 🌐 CONFIGURAÇÕES DE SERVIDOR
 # ===========================================
-# Estas pastas contêm dados sensíveis e arquivos gerados automaticamente
-node_modules/          # Dependências npm
-.next/                 # Build do Next.js
-prisma/                # Schema e migrações (contém dados sensíveis)
-private/               # Dados sensíveis (certificados, backups, logs)
+
+# Nginx
+nginx.conf.backup
+*.conf.backup
+
+# Apache
+.htaccess.backup
+httpd.conf.backup
+
+# Docker
+.dockerignore.backup
+docker-compose.override.yml
+
+# ===========================================
+# 📊 MONITORAMENTO E ANÁLISE
+# ===========================================
+
+# Analytics
+analytics/
+metrics/
+monitoring/
+
+# Error tracking
+errors/
+exceptions/
+crash-reports/
+
+# ===========================================
+# 🔄 VERSIONAMENTO E DEPLOY
+# ===========================================
+
+# Git
+.gitattributes.backup
+
+# Deployment
+deploy/
+deployment/
+.releases/
+
+# CI/CD
+.github/workflows/secrets/
+.gitlab-ci.yml.backup
+
+# ===========================================
+# 📱 MOBILE E APPS
+# ===========================================
+
+# React Native
+.expo/
+.expo-shared/
+
+# Capacitor
+capacitor.config.backup.*
+
+# ===========================================
+# 🎨 ASSETS E MÍDIA
+# ===========================================
+
+# Imagens grandes não otimizadas
+*.psd
+*.ai
+*.sketch
+*.fig
+
+# Vídeos
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm
+
+# ===========================================
+# 🚨 REGRAS ESPECÍFICAS DO PROJETO
+# ===========================================
+
+# Arquivos específicos do VemPraFonte
+ultimate-security-pentest.js
+database_backup_*.sql
+temp_emails/
+*.20250904_*
+*.backup.tsx
+*.bak_*
+Header.tsx.bak_*
+page.backup.tsx
+
+# Arquivos de configuração específicos
+next.config.js.backup
+middleware.ts.backup
+middleware.ts.20250904_*
+
+# ===========================================
+# ✅ EXCEÇÕES (ARQUIVOS QUE DEVEM SER COMMITADOS)
+# ===========================================
+
+# Manter estes arquivos importantes
+!package.json
+!package-lock.json
+!tsconfig.json
+!tailwind.config.ts
+!postcss.config.js
+!next.config.js
+!middleware.ts
+!prisma/schema.prisma
+!README.md
+!.gitignore
+
+# ===========================================
+# 📋 CHECKLIST DE SEGURANÇA
+# ===========================================
+# ✅ Environment variables (.env*)
+# ✅ Database files (*.db, *.sql)
+# ✅ Private keys (*.key, *.pem)
+# ✅ Uploads directory
+# ✅ Log files (*.log)
+# ✅ Backup files (*.backup, *.bak)
+# ✅ Temporary files (temp_*)
+# ✅ Node modules (node_modules/)
+# ✅ Build output (.next/, dist/)
+# ✅ Cache files (.cache/, *.tsbuildinfo)
+# ✅ IDE files (.vscode/, .idea/)
+# ✅ OS files (.DS_Store, Thumbs.db)
+# ✅ Test files (test-*, *.test.*)
+# ✅ Scripts directory
+# ✅ Documentation directory
+# ✅ Private directory
+
+# ===========================================
+# 🔒 VALIDAÇÃO DE SEGURANÇA
+# ===========================================
+# Este .gitignore foi criado para proteger:
+# - Credenciais de banco de dados
+# - Chaves de API e JWT
+# - Certificados SSL/TLS
+# - Dados de usuários (uploads)
+# - Logs com informações sensíveis
+# - Configurações de produção
+# - Backups de banco de dados
+# - Arquivos temporários
+# - Dados de desenvolvimento local

@@ -1,129 +1,142 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { authenticateUser, isAdmin } from '@/lib/auth';
+import { query } from '@/lib/database';
+import { decrypt, decryptUsersForAdmin } from '@/lib/encryption';
+import { authenticateUser } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
-  const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL
-      }
-    }
-  });
-
   try {
     // VERIFICAÇÃO CRÍTICA DE SEGURANÇA - APENAS ADMINS AUTENTICADOS
     const user = await authenticateUser(request);
-    if (!user || !isAdmin(user)) {
+    if (!user || !user.isAdmin) {
       return NextResponse.json(
         { success: false, error: 'Acesso negado. Apenas administradores autorizados.' },
         { status: 401 }
       );
     }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const take = parseInt(searchParams.get('take') || '10');
+    const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || '';
-    const role = searchParams.get('role') || '';
 
-    const skip = (page - 1) * take;
-
-    // Construir filtros
-    const where: any = {};
+    // Buscar usuários com paginação e filtros
+    let whereClause = '';
+    const params: any[] = [];
     
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } }
-      ];
+      whereClause = ' WHERE (name LIKE ? OR email LIKE ?)';
+      const searchTerm = `%${search}%`;
+      params.push(searchTerm, searchTerm);
     }
 
-    if (status) {
-      where.is_active = status === 'active';
-    }
-
-    if (role) {
-      where.is_admin = role === 'admin';
-    }
-
-    // Buscar usuários com contagem de pedidos e valor total gasto
-    const users = await prisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        is_admin: true,
-        is_active: true,
-        email_verified_at: true,
-        last_login: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            orders: true
-          }
-        },
-        orders: {
-          select: {
-            total_amount: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take
-    });
+    const offset = (page - 1) * limit;
+    
+    const users = await query(`
+      SELECT 
+        u.id, 
+        u.name, 
+        u.email, 
+        u.phone, 
+        u.address, 
+        u.is_admin, 
+        u.is_active, 
+        u.created_at, 
+        u.updated_at,
+        u.last_login,
+        COALESCE(order_stats.order_count, 0) as orderCount,
+        COALESCE(order_stats.total_spent, 0) as totalSpent
+      FROM users u
+      LEFT JOIN (
+        SELECT 
+          user_id,
+          COUNT(*) as order_count,
+          SUM(total_amount) as total_spent
+        FROM orders 
+        GROUP BY user_id
+      ) order_stats ON u.id = order_stats.user_id
+      ${whereClause}
+      ORDER BY u.created_at DESC 
+      LIMIT ? OFFSET ?
+    `, [...params, limit, offset]);
 
     // Contar total de usuários para paginação
-    const totalUsers = await prisma.user.count({ where });
+    const totalResult = await query(`
+      SELECT COUNT(*) as total FROM users 
+      ${whereClause}
+    `, params);
+    
+    const totalUsers = totalResult[0].total;
 
-    // Formatar dados dos usuários
-    const formattedUsers = users.map((user: any) => {
-      const totalSpent = user.orders.reduce((sum: number, order: any) => {
-        return sum + Number(order.total_amount || 0);
-      }, 0);
-
+    // DESCRIPTOGRAFIA INTELIGENTE E AUTOMÁTICA PARA ADMIN
+    console.log(`🔓 Iniciando descriptografia automática de ${users.length} usuários para admin...`);
+    
+    // Usar a função inteligente de descriptografia para admin
+    const decryptedUsers = decryptUsersForAdmin(users).map((user: any) => {
       return {
         id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone || '',
+        uuid: user.user_uuid, // Incluir UUID para maior segurança
+        name: user.name || 'Nome não informado',
+        email: user.email || 'Email não informado',
+        phone: user.phone,
+        address: user.address,
         role: user.is_admin ? 'admin' : 'user',
         status: user.is_active ? 'active' : 'inactive',
-        emailVerified: !!user.email_verified_at,
-        lastLogin: user.last_login ? user.last_login.toLocaleDateString('pt-BR') : 'Nunca',
-        createdAt: user.createdAt.toLocaleDateString('pt-BR'),
-        orderCount: user._count.orders,
-        totalSpent: Math.round(totalSpent * 100) / 100
+        orderCount: parseInt(user.orderCount) || 0,
+        totalSpent: parseFloat(user.totalSpent) || 0,
+        lastLogin: user.last_login ? new Date(user.last_login).toLocaleDateString('pt-BR') : null,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at,
+        // Metadados de descriptografia (apenas para debug em desenvolvimento)
+        _decryption_status: user._decryption_status,
+        _decrypted_at: user._decrypted_at
       };
     });
+    
+    console.log(`✅ Descriptografia automática concluída com sucesso!`);
 
     return NextResponse.json({
       success: true,
       data: {
-        users: formattedUsers,
+        users: decryptedUsers,
         pagination: {
           page,
-          take,
+          limit,
           total: totalUsers,
-          pages: Math.ceil(totalUsers / take)
+          pages: Math.ceil(totalUsers / limit)
         }
       }
     });
 
   } catch (error) {
-    console.error('❌ Erro ao buscar usuários:', error);
+    console.error('Erro ao buscar usuários:', error);
     return NextResponse.json(
       { success: false, error: 'Erro interno do servidor' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    // VERIFICAÇÃO CRÍTICA DE SEGURANÇA - APENAS ADMINS AUTENTICADOS
+    const user = await authenticateUser(request);
+    if (!user || !user.isAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Acesso negado. Apenas administradores autorizados.' },
+        { status: 401 }
+      );
+    }
 
+    return NextResponse.json(
+      { success: false, error: 'Método não implementado' },
+      { status: 501 }
+    );
 
+  } catch (error) {
+    console.error('Erro ao criar usuário:', error);
+    return NextResponse.json(
+      { success: false, error: 'Erro interno do servidor' },
+      { status: 500 }
+    );
+  }
+}

@@ -14,6 +14,62 @@ const preference = new Preference(client);
 
 export async function POST(request: NextRequest) {
   try {
+    const body = await request.json();
+    const { items, customer, shipping_address, payment_method } = body;
+
+    // PROTECÇÃO AVANÇADA: Verificar SQL Injection
+    const sqlPatterns = [
+      // Comandos SQL
+      /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT|FROM|WHERE|HAVING|GROUP\s+BY|ORDER\s+BY)\b)/gi,
+      // Caracteres perigosos
+      /[;'\"\\]/gi,
+      // Comentários SQL
+      /(\-\-|\/\*|\*\/|#)/gi,
+      // Padrões de bypass
+      /(OR\s+['"]?\d*['"]?\s*=\s*['"]?\d*['"]?)/gi,
+      /(AND\s+['"]?\d*['"]?\s*=\s*['"]?\d*['"]?)/gi,
+      /(OR\s+['"]?[a-zA-Z]*['"]?\s*=\s*['"]?[a-zA-Z]*['"]?)/gi,
+      /(UNION\s+SELECT)/gi,
+      // Padrões específicos detectados
+      /(OR\s+['"]?1['"]?\s*=\s*['"]?1['"]?)/gi,
+      /(OR\s+['"]?a['"]?\s*=\s*['"]?a['"]?)/gi,
+      /(OR\s+['"]?x['"]?\s*=\s*['"]?x['"]?)/gi,
+      // Parênteses e operadores
+      /(\(['"]?\d*['"]?\s*OR\s*['"]?\d*['"]?\))/gi,
+      // Comandos INSERT/DROP
+      /(INSERT\s+INTO|DROP\s+TABLE|DELETE\s+FROM)/gi
+    ];
+
+    const checkSQLInjection = (value: string) => {
+      return sqlPatterns.some(pattern => pattern.test(value));
+    };
+
+    // Verificar todos os campos do customer
+    if (customer) {
+      const customerFields = [customer.name, customer.email, customer.phone];
+      for (const field of customerFields) {
+        if (field && checkSQLInjection(field)) {
+          return NextResponse.json(
+            { error: 'Acesso negado - tentativa de ataque detectada' },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    // Verificar campos do endereço
+    if (shipping_address) {
+      const addressFields = [shipping_address.street, shipping_address.city, shipping_address.state, shipping_address.zipCode];
+      for (const field of addressFields) {
+        if (field && checkSQLInjection(field)) {
+          return NextResponse.json(
+            { error: 'Acesso negado - tentativa de ataque detectada' },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     console.log('=== CREATE ORDER DEBUG ===');
     console.log('Token do Mercado Pago:', process.env.MERCADOPAGO_ACCESS_TOKEN ? 'Configurado' : 'NÃO CONFIGURADO');
     
@@ -27,186 +83,164 @@ export async function POST(request: NextRequest) {
       console.log('Usuário não autenticado, criando pedido anônimo:', (error as Error).message);
     }
 
-    const body = await request.json();
-    const { items, customer, shipping_address, payment_method } = body;
-
     console.log('Customer email:', customer?.email);
     console.log('User ID que será usado:', user?.userId);
-    console.log('Customer completo:', customer);
-    console.log('Shipping address:', shipping_address);
-    console.log('Items recebidos:', items);
 
-    // Se não conseguiu autenticar, tentar encontrar usuário pelo email
-    let userId = user?.userId;
-    if (!userId && customer?.email) {
-      try {
-        const userByEmail = await query('SELECT id FROM users WHERE email = ?', [customer.email]);
-        if (userByEmail && userByEmail.length > 0) {
-          userId = userByEmail[0].id;
-          console.log('Usuário encontrado por email, ID:', userId);
-        }
-      } catch (error) {
-        console.log('Erro ao buscar usuário por email:', (error as Error).message);
-      }
+    // Validações básicas
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json(
+        { error: 'Items do pedido são obrigatórios' },
+        { status: 400 }
+      );
     }
 
-    // Calcular totais
-    const subtotal = Number(items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0));
-    const shipping_cost = Number(shipping_address?.shipping_cost || 0);
-    const tax_amount = 0; // Implementar cálculo de impostos se necessário
-    const discount_amount = 0; // Implementar cupons se necessário
-    const total_amount = subtotal + shipping_cost + tax_amount - discount_amount;
+    if (!customer || !customer.email || !customer.name) {
+      return NextResponse.json(
+        { error: 'Dados do cliente são obrigatórios' },
+        { status: 400 }
+      );
+    }
+
+    if (!shipping_address) {
+      return NextResponse.json(
+        { error: 'Endereço de entrega é obrigatório' },
+        { status: 400 }
+      );
+    }
+
+    // Calcular total do pedido
+    let total = 0;
+    const orderItems = [];
+
+    for (const item of items) {
+      if (!item.product_id || !item.quantity || item.quantity <= 0) {
+        return NextResponse.json(
+          { error: 'Dados dos items inválidos' },
+          { status: 400 }
+        );
+      }
+
+      // Buscar dados do produto
+      const product = await query(
+        'SELECT id, name, price FROM products WHERE id = ?',
+        [item.product_id]
+      );
+
+      if (!product || product.length === 0) {
+        return NextResponse.json(
+          { error: `Produto com ID ${item.product_id} não encontrado` },
+          { status: 400 }
+        );
+      }
+
+      const productData = product[0];
+      const price = parseFloat(productData.price);
+      const quantity = parseInt(item.quantity);
+      const itemTotal = price * quantity;
+      total += itemTotal;
+
+      orderItems.push({
+        product_id: item.product_id,
+        product_name: productData.name,
+        quantity: quantity,
+        price: price,
+        total: itemTotal
+      });
+    }
 
     // Gerar número do pedido
-    const orderNumber = `VPF-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+    const orderNumber = `VEM${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
-    console.log('Criando pedido com user_id:', userId);
-
-    // Criptografar dados sensíveis antes de salvar
-    const encryptedCustomerData = customer ? encryptCheckoutData({ customer }) : null;
-    const encryptedShippingAddress = shipping_address ? encrypt(JSON.stringify(shipping_address)) : null;
-
-    // Preparar parâmetros com validação explícita
-    const params = [
-      userId ? Number(userId) : null,
-      orderNumber,
-      'pending',
-      'pending',
-      payment_method || 'Mercado Pago',
-      subtotal,
-      shipping_cost,
-      tax_amount,
-      discount_amount,
-      total_amount,
-      'BRL',
-      encryptedCustomerData?.customer?.name || customer?.name || null,
-      encryptedCustomerData?.customer?.email || customer?.email || null,
-      encryptedCustomerData?.customer?.phone || customer?.phone || null,
-      encryptedShippingAddress
-    ];
-
-    console.log('Parâmetros da query:', params);
+    // Criptografar dados sensíveis do cliente
+    const encryptedCustomerName = encrypt(customer.name);
+    const encryptedCustomerEmail = encrypt(customer.email);
+    const encryptedCustomerPhone = customer.phone ? encrypt(customer.phone) : null;
+    const encryptedShippingAddress = encrypt(JSON.stringify(shipping_address));
 
     // Criar pedido no banco
-    const orderResult = await query(`
-      INSERT INTO orders (
-        user_id,
-        order_number,
-        status,
-        payment_status,
-        payment_method,
-        subtotal,
-        shipping_cost,
-        tax_amount,
-        discount_amount,
-        total_amount,
-        currency,
-        customer_name,
-        customer_email,
-        customer_phone,
-        shipping_address
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, params);
+    const orderResult = await query(
+      `INSERT INTO orders (
+        order_number, user_id, status, payment_status, 
+        customer_name, customer_email, customer_phone, shipping_address, 
+        total_amount, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        orderNumber,
+        user?.userId || null,
+        'pending',
+        'pending',
+        encryptedCustomerName,
+        encryptedCustomerEmail,
+        encryptedCustomerPhone,
+        encryptedShippingAddress,
+        total
+      ]
+    );
 
-    const orderId = (orderResult as any).insertId;
-    console.log('Pedido criado com ID:', orderId, 'e user_id:', userId);
+    const orderId = orderResult.insertId;
 
-    // Criar itens do pedido
-    for (const item of items) {
-      const itemParams = [
-        orderId,
-        item.product_id || null,
-        null, // variant_id
-        item.name || null,
-        item.sku || null,
-        item.size || null,
-        item.color || null,
-        item.quantity || 1,
-        item.price || 0,
-        (item.price || 0) * (item.quantity || 1)
-      ];
-      
-      await query(`
-        INSERT INTO order_items (
-          order_id,
-          product_id,
-          variant_id,
-          product_name,
-          product_sku,
-          size,
-          color,
-          quantity,
-          unit_price,
-          total_price
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, itemParams);
+    // Inserir items do pedido
+    for (const item of orderItems) {
+      await query(
+        'INSERT INTO order_items (order_id, product_id, quantity, unit_price, total_price, product_name) VALUES (?, ?, ?, ?, ?, ?)',
+        [orderId, item.product_id, item.quantity, item.price, item.total, item.product_name || 'Produto']
+      );
     }
 
-    console.log('Pedido criado com sucesso!');
-
     // Criar preferência do Mercado Pago
-    console.log('Criando preferência do Mercado Pago...');
-    
-    const preferenceData = {
-      items: items.map((item: any) => ({
-        id: String(item.product_id || item.id),
-        title: item.name,
-        quantity: Number(item.quantity),
-        unit_price: Number(item.price),
-        currency_id: 'BRL',
-        description: item.name
-      })),
-      payer: {
-        name: customer?.name || 'Cliente',
-        email: customer?.email || 'cliente@email.com',
-        phone: {
-          area_code: '11',
-          number: customer?.phone || '999999999'
-        }
-      },
-      back_urls: {
-        success: `${process.env.NEXT_PUBLIC_APP_URL}/meus-pedidos`,
-        failure: `${process.env.NEXT_PUBLIC_APP_URL}/checkout`,
-        pending: `${process.env.NEXT_PUBLIC_APP_URL}/meus-pedidos`
-      },
-      auto_return: 'approved',
-      external_reference: orderNumber,
-      notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago`
-    };
-
-    console.log('Dados da preferência:', JSON.stringify(preferenceData, null, 2));
-    
-    // Debug adicional das URLs
-    console.log('🔍 [DEBUG] URLs sendo enviadas:');
-    console.log('Success URL:', preferenceData.back_urls.success);
-    console.log('Failure URL:', preferenceData.back_urls.failure);
-    console.log('Pending URL:', preferenceData.back_urls.pending);
-    console.log('Notification URL:', preferenceData.notification_url);
-    console.log('Base URL (NEXT_PUBLIC_APP_URL):', process.env.NEXT_PUBLIC_APP_URL);
-
     try {
+      const preferenceData = {
+        items: orderItems.map(item => ({
+          id: item.product_id.toString(),
+          title: item.product_name,
+          quantity: parseInt(item.quantity),
+          unit_price: parseFloat(item.price)
+        })),
+        payer: {
+          name: customer.name,
+          email: customer.email,
+          phone: customer.phone ? { number: customer.phone } : undefined
+        },
+        external_reference: orderNumber,
+        notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago`,
+        back_urls: {
+          success: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success`,
+          failure: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/failure`,
+          pending: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/pending`
+        },
+        auto_return: 'approved'
+      };
+
       const preferenceResult = await preference.create({ body: preferenceData });
-      console.log('Preferência criada com sucesso:', preferenceResult);
+
+      // Atualizar pedido com ID do Mercado Pago
+      await query(
+        'UPDATE orders SET mercado_pago_preference_id = ? WHERE id = ?',
+        [preferenceResult.id, orderId]
+      );
 
       return NextResponse.json({
         success: true,
-        orderId,
-        orderNumber,
-        total: total_amount,
-        init_point: preferenceResult.init_point,
-        sandbox_init_point: preferenceResult.sandbox_init_point
+        orderId: orderId,
+        orderNumber: orderNumber,
+        preferenceId: preferenceResult.id,
+        initPoint: preferenceResult.init_point,
+        total: total
       });
+
     } catch (mpError) {
       console.error('Erro ao criar preferência do Mercado Pago:', mpError);
       
-      // Retornar sucesso mesmo se o Mercado Pago falhar, mas sem init_point
-      return NextResponse.json({
-        success: true,
-        orderId,
-        orderNumber,
-        total: total_amount,
-        error: 'Mercado Pago temporariamente indisponível'
-      });
+      // Se falhar o Mercado Pago, marcar pedido como erro
+      await query(
+        'UPDATE orders SET status = ?, payment_status = ? WHERE id = ?',
+        ['error', 'error', orderId]
+      );
+
+      return NextResponse.json(
+        { error: 'Erro ao processar pagamento. Tente novamente.' },
+        { status: 500 }
+      );
     }
 
   } catch (error) {
