@@ -175,16 +175,16 @@ export async function POST(request: NextRequest) {
 
     // Enviar e-mail
     try {
-      const transporter = createTransporter();
-      
+    const transporter = createTransporter();
+
       const mailOptions = {
         from: process.env.SMTP_USER,
         to: process.env.CONTACT_EMAIL || process.env.SMTP_USER,
         subject: `Nova mensagem de contato: ${subject}`,
-        html: `
+      html: `
           <h2>Nova mensagem de contato</h2>
           <p><strong>Nome:</strong> ${name}</p>
-          <p><strong>E-mail:</strong> ${email}</p>
+                <p><strong>E-mail:</strong> ${email}</p>
           <p><strong>Telefone:</strong> ${phone || 'Não informado'}</p>
           <p><strong>Assunto:</strong> ${subject}</p>
           <p><strong>Mensagem:</strong></p>

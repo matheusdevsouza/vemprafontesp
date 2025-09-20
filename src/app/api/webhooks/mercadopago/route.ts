@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       `, [
         orderStatus, 
         paymentStatus, 
-        paymentId.toString(), 
+        payment.id ? payment.id.toString() : null, 
         payment.payment_method?.type || 'mercadopago',
         orderNumber
       ]);
