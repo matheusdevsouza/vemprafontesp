@@ -20,6 +20,7 @@ import {
   FaExclamationTriangle
 } from 'react-icons/fa';
 import Link from 'next/link'
+import CreateProductModal from '@/components/admin/CreateProductModal'
 
 interface Product {
   id: number;
@@ -40,11 +41,6 @@ interface Product {
   }>;
 }
 
-interface Category {
-  id: number;
-  name: string;
-}
-
 interface Brand {
   id: number;
   name: string;
@@ -52,18 +48,17 @@ interface Brand {
 
 export default function ProdutosPage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedBrand, setSelectedBrand] = useState('all');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -74,7 +69,6 @@ export default function ProdutosPage() {
         page: page.toString(),
         limit: '10',
         search: searchTerm,
-        category: selectedCategory,
         brand: selectedBrand,
         sortBy,
         sortOrder
@@ -98,20 +92,8 @@ export default function ProdutosPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchTerm, selectedCategory, selectedBrand, sortBy, sortOrder]);
+  }, [page, searchTerm, selectedBrand, sortBy, sortOrder]);
 
-  const fetchCategories = useCallback(async () => {
-    try {
-      const response = await fetch('/api/categories');
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        setCategories(result.data || []);
-      }
-    } catch (error) {
-      console.error('Erro ao buscar categorias:', error);
-    }
-  }, []);
 
   const fetchBrands = useCallback(async () => {
     try {
@@ -128,9 +110,8 @@ export default function ProdutosPage() {
 
   useEffect(() => {
     fetchProducts();
-    fetchCategories();
     fetchBrands();
-  }, [fetchProducts, fetchCategories, fetchBrands]);
+  }, [fetchProducts, fetchBrands]);
 
   const handleSort = (field: string) => {
     if (sortBy === field) {
@@ -171,7 +152,6 @@ export default function ProdutosPage() {
 
   const clearFilters = () => {
     setSearchTerm('');
-    setSelectedCategory('all');
     setSelectedBrand('all');
     setPage(1);
   };
@@ -238,7 +218,10 @@ export default function ProdutosPage() {
           <h1 className="text-3xl font-bold text-white mb-2">Gerenciar Produtos</h1>
           <p className="text-gray-400">Gerencie o catálogo de produtos da sua loja</p>
         </div>
-        <button className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-primary-500/25 flex items-center gap-2">
+        <button 
+          onClick={() => setShowCreateModal(true)}
+          className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-primary-500/25 flex items-center gap-2"
+        >
           <FaPlus size={16} />
           Adicionar Produto
         </button>
@@ -251,7 +234,7 @@ export default function ProdutosPage() {
         transition={{ duration: 0.5, delay: 0.1 }}
         className="bg-dark-800/50 backdrop-blur-sm border border-dark-700/50 rounded-2xl p-6"
       >
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search */}
           <div className="relative">
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
@@ -263,18 +246,6 @@ export default function ProdutosPage() {
               className="w-full bg-dark-700/50 border border-dark-600/50 rounded-xl px-4 py-3 pl-10 text-white placeholder-gray-400 focus:outline-none focus:border-primary-500 focus:bg-dark-700 transition-all duration-300"
             />
           </div>
-
-          {/* Category Filter */}
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="bg-dark-700/50 border border-dark-600/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-500 focus:bg-dark-700 transition-all duration-300"
-          >
-            <option value="all">Todas as Categorias</option>
-            {categories && categories.length > 0 && categories.map(category => (
-              <option key={category.id} value={category.id}>{category.name}</option>
-            ))}
-          </select>
 
           {/* Brand Filter */}
           <select
@@ -326,15 +297,6 @@ export default function ProdutosPage() {
                   >
                     Marca
                     {getSortIcon('brand')}
-                  </button>
-                </th>
-                <th className="px-6 py-4 text-left">
-                  <button
-                    onClick={() => handleSort('category')}
-                    className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors duration-300 font-semibold"
-                  >
-                    Categoria
-                    {getSortIcon('category')}
                   </button>
                 </th>
                 <th className="px-6 py-4 text-left">
@@ -399,11 +361,6 @@ export default function ProdutosPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-dark-700/50 text-gray-300 border border-dark-600/50">
-                      {product.category?.name || 'N/A'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
                     <span className="text-white font-semibold">
                       R$ {product.price?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
                     </span>
@@ -450,7 +407,7 @@ export default function ProdutosPage() {
                 </motion.tr>
               )) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={6} className="px-6 py-12 text-center">
                     <div className="text-gray-400">
                       <FaBox className="mx-auto mb-4" size={48} />
                       <h3 className="text-lg font-medium text-gray-300 mb-2">Nenhum produto encontrado</h3>
@@ -519,6 +476,16 @@ export default function ProdutosPage() {
           </div>
         </motion.div>
       )}
+
+      {/* Modal de Criação de Produto */}
+      <CreateProductModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={() => {
+          fetchProducts();
+          setShowCreateModal(false);
+        }}
+      />
     </div>
   );
 }

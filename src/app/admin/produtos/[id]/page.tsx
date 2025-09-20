@@ -12,7 +12,18 @@ interface Product {
   price: number
   stock_quantity: number
   is_active: boolean
-  sku?: string
+  brand_id?: number
+  model_id?: number
+}
+
+interface Brand {
+  id: number;
+  name: string;
+}
+
+interface Model {
+  id: number;
+  name: string;
 }
 
 export default function ProductDetailPage() {
@@ -25,15 +36,28 @@ export default function ProductDetailPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [brands, setBrands] = useState<Brand[]>([])
+  const [models, setModels] = useState<Model[]>([])
 
   useEffect(() => {
-    async function fetchProduct() {
+    async function fetchData() {
       try {
         setLoading(true)
-        const res = await fetch(`/api/admin/products/${id}`)
-        if (!res.ok) throw new Error('Falha ao carregar produto')
-        const response = await res.json()
-        const data = response.product // Os dados estão em response.product
+        
+        // Carregar produto, marcas e modelos em paralelo
+        const [productRes, brandsRes, modelsRes] = await Promise.all([
+          fetch(`/api/admin/products/${id}`),
+          fetch('/api/brands'),
+          fetch('/api/models')
+        ])
+        
+        if (!productRes.ok) throw new Error('Falha ao carregar produto')
+        
+        const productData = await productRes.json()
+        const brandsData = await brandsRes.json()
+        const modelsData = await modelsRes.json()
+        
+        const data = productData.product
         
         if (!data || !data.id) {
           throw new Error('Dados do produto inválidos')
@@ -46,15 +70,20 @@ export default function ProductDetailPage() {
           price: Number(data.price ?? 0),
           stock_quantity: Number(data.stock_quantity ?? 0),
           is_active: Boolean(data.is_active),
-          sku: data.sku ?? ''
+          brand_id: data.brand_id ? Number(data.brand_id) : undefined,
+          model_id: data.model_id ? Number(data.model_id) : undefined
         })
+        
+        if (brandsData.success) setBrands(brandsData.data || [])
+        if (modelsData.success) setModels(modelsData.data || [])
+        
       } catch (e: any) {
         setError(e.message || 'Erro inesperado')
       } finally {
         setLoading(false)
       }
     }
-    if (id) fetchProduct()
+    if (id) fetchData()
   }, [id])
 
   async function handleSave() {
@@ -71,7 +100,8 @@ export default function ProductDetailPage() {
           price: Number(product.price),
           stock_quantity: Number(product.stock_quantity),
           is_active: Boolean(product.is_active),
-          sku: product.sku
+          brand_id: product.brand_id,
+          model_id: product.model_id
         })
       })
       if (!res.ok) throw new Error('Falha ao salvar alterações')
@@ -138,12 +168,30 @@ export default function ProductDetailPage() {
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1">SKU</label>
-            <input
-              value={product.sku || ''}
-              onChange={(e) => setProduct({ ...product, sku: e.target.value })}
+            <label className="block text-sm text-gray-400 mb-1">Marca</label>
+            <select
+              value={product.brand_id || ''}
+              onChange={(e) => setProduct({ ...product, brand_id: e.target.value ? Number(e.target.value) : undefined })}
               className="w-full bg-dark-900 border border-dark-700 rounded-lg p-2 text-white"
-            />
+            >
+              <option value="">Selecione uma marca</option>
+              {brands.map(brand => (
+                <option key={brand.id} value={brand.id}>{brand.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Modelo</label>
+            <select
+              value={product.model_id || ''}
+              onChange={(e) => setProduct({ ...product, model_id: e.target.value ? Number(e.target.value) : undefined })}
+              className="w-full bg-dark-900 border border-dark-700 rounded-lg p-2 text-white"
+            >
+              <option value="">Selecione um modelo</option>
+              {models.map(model => (
+                <option key={model.id} value={model.id}>{model.name}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm text-gray-400 mb-1">Preço</label>
@@ -164,15 +212,6 @@ export default function ProductDetailPage() {
               className="w-full bg-dark-900 border border-dark-700 rounded-lg p-2 text-white"
             />
           </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm text-gray-400 mb-1">Descrição</label>
-            <textarea
-              rows={4}
-              value={product.description || ''}
-              onChange={(e) => setProduct({ ...product, description: e.target.value })}
-              className="w-full bg-dark-900 border border-dark-700 rounded-lg p-2 text-white"
-            />
-          </div>
           <div>
             <label className="block text-sm text-gray-400 mb-1">Ativo</label>
             <select
@@ -183,6 +222,15 @@ export default function ProductDetailPage() {
               <option value="true">Sim</option>
               <option value="false">Não</option>
             </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm text-gray-400 mb-1">Descrição</label>
+            <textarea
+              rows={4}
+              value={product.description || ''}
+              onChange={(e) => setProduct({ ...product, description: e.target.value })}
+              className="w-full bg-dark-900 border border-dark-700 rounded-lg p-2 text-white"
+            />
           </div>
         </div>
       </div>

@@ -79,9 +79,10 @@ export async function PATCH(
         slug: body.name?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
         description: body.description,
         price: body.price ? parseFloat(body.price) : undefined,
-        stock_quantity: body.stock !== undefined ? parseInt(body.stock) : undefined,
-        sku: body.sku,
-        is_active: body.is_active !== undefined ? body.is_active : undefined
+        stock_quantity: body.stock_quantity !== undefined ? parseInt(body.stock_quantity) : undefined,
+        is_active: body.is_active !== undefined ? body.is_active : undefined,
+        brand_id: body.brand_id ? parseInt(body.brand_id) : undefined,
+        model_id: body.model_id ? parseInt(body.model_id) : undefined
       }
     });
     
