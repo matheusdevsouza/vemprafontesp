@@ -142,14 +142,16 @@ export default function CreateProductModal({ isOpen, onClose, onSuccess }: Creat
     setImagePreviews(prev => {
       const newPreviews = prev.filter((_, i) => i !== index);
       URL.revokeObjectURL(prev[index]);
+      
+      // Ajustar índice da imagem primária
+      if (primaryImageIndex === index) {
+        setPrimaryImageIndex(newPreviews.length > 0 ? 0 : null);
+      } else if (primaryImageIndex !== null && primaryImageIndex > index) {
+        setPrimaryImageIndex(primaryImageIndex - 1);
+      }
+      
       return newPreviews;
     });
-    
-    if (primaryImageIndex === index) {
-      setPrimaryImageIndex(newPreviews.length > 0 ? 0 : null);
-    } else if (primaryImageIndex !== null && primaryImageIndex > index) {
-      setPrimaryImageIndex(primaryImageIndex - 1);
-    }
   };
 
   const setPrimaryImage = (index: number) => {
