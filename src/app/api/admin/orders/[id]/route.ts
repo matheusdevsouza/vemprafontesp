@@ -41,8 +41,13 @@ export async function GET(
     const orderData = order[0];
     
     // Dados já estão em texto simples
+    // Normalizar datas para camelCase usados no frontend
     const processedOrder = {
       ...orderData,
+      createdAt: orderData.created_at,
+      updatedAt: orderData.updated_at,
+      shipped_at: orderData.shipped_at,
+      delivered_at: orderData.delivered_at,
       items: items || []
     };
 

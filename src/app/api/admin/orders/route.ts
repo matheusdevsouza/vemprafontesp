@@ -137,8 +137,9 @@ export async function GET(request: NextRequest) {
       total_amount: parseFloat(order.total_amount),
       status: order.status,
       payment_status: order.payment_status,
-      created_at: order.created_at,
-      updated_at: order.updated_at,
+      // Normalização para camelCase esperado no frontend
+      createdAt: order.created_at,
+      updatedAt: order.updated_at,
       tracking_code: order.tracking_code,
       tracking_url: order.tracking_url,
       shipping_company: order.shipping_company,
