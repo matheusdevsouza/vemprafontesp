@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { comparePassword, generateToken, setAuthCookie } from '@/lib/auth';
 import { getUserByEmail, updateUserLastLogin } from '@/lib/database';
 import { applySimpleRateLimit } from '@/lib/simple-rate-limiter';
-import { createSecureResponse } from '@/lib/security-headers';
+// Headers de segurança gerenciados pelo Nginx
 import { validateCSRFRequest, createCSRFResponse } from '@/lib/csrf-protection';
 
 export async function POST(request: NextRequest) {
@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
     };
 
     if (checkSQLInjection(email) || checkSQLInjection(password)) {
-      return createSecureResponse(
+      return NextResponse.json(
         { error: 'Acesso negado - tentativa de ataque detectada' },
-        403
+        { status: 403 }
       );
     }
 

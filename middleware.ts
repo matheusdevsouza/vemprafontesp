@@ -280,44 +280,9 @@ function detectSuspiciousPatterns(request: NextRequest): boolean {
   return false;
 }
 
-// 5. HEADERS DE SEGURANÇA COMPLETOS
-function setSecurityHeaders(response: NextResponse): NextResponse {
-  // Headers básicos
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()');
-  response.headers.set('X-DNS-Prefetch-Control', 'off');
-  response.headers.set('X-Download-Options', 'noopen');
-  response.headers.set('X-Permitted-Cross-Domain-Policies', 'none');
-
-  // Content Security Policy endurecida (sem unsafe-eval; mantendo compatibilidade)
-  const csp = [
-    "default-src 'self'",
-    "script-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com data:",
-    "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://api.mercadopago.com https://viacep.com.br https://www.google-analytics.com",
-    "frame-src 'self' https://www.mercadopago.com.br",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-    "upgrade-insecure-requests"
-  ].join('; ');
-
-  response.headers.set('Content-Security-Policy', csp);
-
-  // Headers avançados - TODOS IMPLEMENTADOS
-  response.headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
-  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
-  response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
-  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-  response.headers.set('Expect-CT', 'max-age=86400, enforce');
-
-  // Headers de auditoria
+// 5. HEADERS DE AUDITORIA (headers de segurança gerenciados pelo Nginx)
+function setAuditHeaders(response: NextResponse): NextResponse {
+  // Apenas headers de auditoria/debug que não conflitam com Nginx
   response.headers.set('X-Audit-ID', `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
   response.headers.set('X-Security-Level', 'HIGH');
   response.headers.set('X-Protection-Status', 'ACTIVE');
@@ -429,9 +394,9 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  // 5. HEADERS DE SEGURANÇA
+  // 5. HEADERS DE AUDITORIA (segurança gerenciada pelo Nginx)
   const response = NextResponse.next();
-  setSecurityHeaders(response);
+  setAuditHeaders(response);
 
   // 6. Se for rota pública, permitir acesso
   if (isPublicRoute(pathname)) {
