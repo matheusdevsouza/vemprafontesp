@@ -292,21 +292,20 @@ function setSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-Download-Options', 'noopen');
   response.headers.set('X-Permitted-Cross-Domain-Policies', 'none');
 
-  // Content Security Policy
+  // Content Security Policy endurecida (sem unsafe-eval; mantendo compatibilidade)
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com",
+    "script-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https: blob:",
     "connect-src 'self' https://api.mercadopago.com https://viacep.com.br https://www.google-analytics.com",
     "frame-src 'self' https://www.mercadopago.com.br",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "upgrade-insecure-requests",
-    "require-trusted-types-for 'script'",
-    "trusted-types default"
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests"
   ].join('; ');
 
   response.headers.set('Content-Security-Policy', csp);

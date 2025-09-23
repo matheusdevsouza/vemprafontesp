@@ -31,20 +31,7 @@ const nextConfig = {
     }
   },
 
-  // Headers de segurança
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self' https:; frame-src 'self' https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self';"
-          }
-        ]
-      }
-    ]
-  },
+  // Headers de segurança centralizados no middleware.ts
 
   // Configurações de build
   // output: 'standalone', // Removido para evitar problemas
