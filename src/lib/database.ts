@@ -110,7 +110,7 @@ interface TestimonialFilters {
 
 const dbConfig: DBConfig = {
   host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '3306'),
+  port: parseInt(process.env.DB_PORT || '3307'),
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'vemprafonte_sp',
@@ -833,6 +833,10 @@ export async function getModelBySlug(slug: string): Promise<any | null> {
       'air-max-plus-dn8': {
         image: '/images/modelos/Air Max DN8.webp',
         description: 'Air Max Plus DN8 com design inovador e tecnologia de ponta. A evolução do conforto e estilo Nike.'
+      },
+      'shox-r4': {
+        image: '/images/modelos/Shox R4.png',
+        description: 'Amortecimento com molas visíveis e estilo marcante.'
       },
       'mizuno-prophecy-6': {
         image: '/images/modelos/Mizuno Prophecy 6.avif',
