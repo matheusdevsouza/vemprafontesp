@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/database';
+import database from '@/lib/database';
 import { sendOrderShippedEmail } from '@/lib/email';
-// Removida importação de descriptografia - dados agora em texto simples
 import { authenticateUser } from '@/lib/auth';
+import { 
+  maskSensitiveData, 
+  formatCPF, 
+  formatAddress, 
+  sanitizeInput,
+  hasPermissionToViewSensitiveData,
+  generateAuditHash 
+} from '@/lib/security';
+import { decryptFromDatabase } from '@/lib/transparent-encryption';
 
 export async function GET(
   request: NextRequest,
@@ -17,9 +25,22 @@ export async function GET(
         { status: 401 }
       );
     }
-    const orderId = params.id;
 
-    const order = await query(
+    // Sanitizar e validar ID do pedido
+    const orderId = sanitizeInput(params.id);
+    if (!orderId || isNaN(Number(orderId))) {
+      return NextResponse.json(
+        { error: 'ID do pedido inválido' },
+        { status: 400 }
+      );
+    }
+
+    // Log de auditoria
+    const auditHash = generateAuditHash(`admin_view_order_${orderId}_${user.userId}`);
+    console.log(`🔍 [AUDIT] ${auditHash} - Admin ${user.userId} acessando pedido ${orderId}`);
+
+    // Buscar pedido com validação de permissão
+    const order = await database.query(
       'SELECT * FROM orders WHERE id = ?',
       [orderId]
     );
@@ -32,23 +53,35 @@ export async function GET(
     }
 
     // Buscar items do pedido
-    const items = await query(
+    const items = await database.query(
       'SELECT * FROM order_items WHERE order_id = ?',
       [orderId]
     );
 
-    // Adicionar items ao pedido (dados já estão em texto simples)
     const orderData = order[0];
     
-    // Dados já estão em texto simples
-    // Normalizar datas para camelCase usados no frontend
+    // Descriptografar dados do pedido automaticamente
+    const decryptedOrder = decryptFromDatabase('orders', orderData);
+    
+    // Processar dados com segurança
     const processedOrder = {
-      ...orderData,
-      createdAt: orderData.created_at,
-      updatedAt: orderData.updated_at,
-      shipped_at: orderData.shipped_at,
-      delivered_at: orderData.delivered_at,
-      items: items || []
+      ...decryptedOrder,
+      createdAt: decryptedOrder.created_at,
+      updatedAt: decryptedOrder.updated_at,
+      shipped_at: decryptedOrder.shipped_at,
+      delivered_at: decryptedOrder.delivered_at,
+      items: items || [],
+      // Dados sensíveis com placeholders para revelação controlada
+      customer_cpf: decryptedOrder.customer_cpf ? '***.***.***-**' : null,
+      customer_email: decryptedOrder.customer_email ? '***@***.***' : null,
+      customer_phone: decryptedOrder.customer_phone ? '***-****-****' : null,
+      // Endereço mascarado por padrão
+      shipping_address: decryptedOrder.shipping_address ? '*** ENDEREÇO PROTEGIDO ***' : null,
+      formatted_address: null, // Será revelado apenas quando solicitado
+      // Metadados de segurança
+      _audit_hash: auditHash,
+      _accessed_by: user.userId,
+      _accessed_at: new Date().toISOString()
     };
 
     return NextResponse.json({ order: processedOrder });
@@ -127,19 +160,19 @@ export async function PUT(
 
     updateValues.push(orderId);
 
-    await query(
+    await database.query(
       `UPDATE orders SET ${updateFields.join(', ')} WHERE id = ?`,
       updateValues
     );
 
     // Buscar pedido atualizado
-    const updatedOrder = await query(
+    const updatedOrder = await database.query(
       'SELECT * FROM orders WHERE id = ?',
       [orderId]
     );
 
     // Buscar items do pedido
-    const items = await query(
+    const items = await database.query(
       'SELECT * FROM order_items WHERE order_id = ?',
       [orderId]
     );

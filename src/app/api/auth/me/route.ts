@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser, isAuthenticated, isEmailVerified } from '@/lib/auth';
-import { getUserById } from '@/lib/database';
+import database from '@/lib/database';
+import { decryptFromDatabase } from '@/lib/transparent-encryption';
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,8 +31,10 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    const user = await getUserById(payload.userId);
-    if (!user) {
+    // Buscar usuário do banco (criptografia transparente aplicada automaticamente)
+    const users = await database.query('SELECT * FROM users WHERE id = ?', [payload.userId]);
+    
+    if (!users || users.length === 0) {
       return NextResponse.json(
         { 
           success: false, 
@@ -41,6 +44,9 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Dados já são descriptografados automaticamente pela criptografia transparente
+    const user = users[0];
 
     return NextResponse.json(
       { 

@@ -14,7 +14,7 @@ export async function PUT(
       return NextResponse.json({ message: "Não autorizado" }, { status: 401 });
     }
 
-    const user = await query(`SELECT * FROM users WHERE id = ? AND is_active = 1`, [userPayload.userId]);
+    const user = await database.query(`SELECT * FROM users WHERE id = ? AND is_active = 1`, [userPayload.userId]);
 
     if (!user || user.length === 0) {
       return NextResponse.json({ message: "Usuário não encontrado" }, { status: 404 });
@@ -23,7 +23,7 @@ export async function PUT(
     const addressId = parseInt(params.id);
 
     // Verificar se o endereço pertence ao usuário
-    const existingAddress = await query(`SELECT * FROM addresses WHERE id = ? AND user_id = ?`, [addressId, userPayload.userId]);
+    const existingAddress = await database.query(`SELECT * FROM addresses WHERE id = ? AND user_id = ?`, [addressId, userPayload.userId]);
 
     if (!existingAddress || existingAddress.length === 0) {
       return NextResponse.json({ message: "Endereço não encontrado" }, { status: 404 });
@@ -31,7 +31,7 @@ export async function PUT(
 
     // Se já é o padrão, remover o padrão
     if (existingAddress[0].is_default) {
-      await query(`UPDATE addresses SET is_default = 0 WHERE id = ?`, [addressId]);
+      await database.query(`UPDATE addresses SET is_default = 0 WHERE id = ?`, [addressId]);
       return NextResponse.json({ message: "Endereço removido como padrão com sucesso" });
     }
 

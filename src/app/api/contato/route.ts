@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
 
     // Salvar no banco de dados
     try {
-      await query(
+      await database.query(
         'INSERT INTO contact_messages (name, email, phone, subject, message, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
         [name, email, phone || null, subject, message]
       );

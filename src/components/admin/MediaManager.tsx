@@ -19,6 +19,7 @@ import {
   FaVolumeUp,
   FaVolumeMute
 } from 'react-icons/fa';
+import CustomVideoPlayer from '../CustomVideoPlayer';
 
 interface MediaItem {
   id: number;
@@ -249,22 +250,12 @@ export default function MediaManager({ productId, onMediaUpdate }: MediaManagerP
           </>
         ) : (
           <div className="relative w-full h-full">
-            <video
-              ref={(el) => {
-                if (el) {
-                  videoRefs.current[item.id] = el;
-                }
-              }}
+            <CustomVideoPlayer
               src={item.url}
-              poster={item.thumbnailUrl}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              preload="metadata"
+              thumbnail={item.thumbnailUrl}
+              alt={item.altText}
+              className="w-full h-full"
             />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors">
-              <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 group-hover:bg-white/30 transition-colors">
-                <FaPlay className="text-white text-xl" />
-              </div>
-            </div>
           </div>
         )}
         
@@ -387,11 +378,11 @@ export default function MediaManager({ productId, onMediaUpdate }: MediaManagerP
                   className="max-w-full h-auto rounded-lg"
                 />
               ) : (
-                <video
+                <CustomVideoPlayer
                   src={selectedMedia.url}
-                  controls
-                  className="max-w-full h-auto rounded-lg"
-                  poster={selectedMedia.thumbnailUrl}
+                  thumbnail={selectedMedia.thumbnailUrl}
+                  alt={selectedMedia.altText}
+                  className="max-w-full h-auto"
                 />
               )}
             </div>

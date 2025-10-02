@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import database from '@/lib/database'
 import { authenticateUser, isAdmin } from '@/lib/auth'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
-
-const prisma = new PrismaClient()
 
 // GET - Buscar mídia do produto
 export async function GET(
@@ -32,17 +30,20 @@ export async function GET(
     }
 
     // Buscar imagens do produto
-    const images = await prisma.product_images.findMany({
-      where: { product_id: productId },
-      orderBy: [
-        { is_primary: 'desc' },
-        { sort_order: 'asc' },
-        { created_at: 'asc' }
-      ]
-    })
+    const images = await database.query(
+      `SELECT * FROM product_images 
+       WHERE product_id = ? 
+       ORDER BY is_primary DESC, sort_order ASC, created_at ASC`,
+      [productId]
+    )
 
-    // Buscar vídeos do produto (se existir tabela de vídeos)
-    const videos: any[] = [] // Por enquanto vazio, pode ser implementado depois
+    // Buscar vídeos do produto
+    const videos = await database.query(
+      `SELECT * FROM product_videos 
+       WHERE product_id = ? 
+       ORDER BY is_primary DESC, sort_order ASC, created_at ASC`,
+      [productId]
+    ).catch(() => []) // Se a tabela não existir, retornar array vazio
 
     return NextResponse.json({
       success: true,
@@ -57,8 +58,6 @@ export async function GET(
       success: false,
       error: 'Erro interno do servidor'
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -87,11 +86,12 @@ export async function POST(
     }
 
     // Verificar se produto existe
-    const product = await prisma.product.findUnique({
-      where: { id: productId }
-    })
+    const product = await database.query(
+      'SELECT id FROM products WHERE id = ?',
+      [productId]
+    )
 
-    if (!product) {
+    if (!product || product.length === 0) {
       return NextResponse.json({
         success: false,
         error: 'Produto não encontrado'
@@ -111,10 +111,10 @@ export async function POST(
       }, { status: 400 })
     }
 
-    if (type !== 'image') {
+    if (type !== 'image' && type !== 'video') {
       return NextResponse.json({
         success: false,
-        error: 'Apenas imagens são suportadas no momento'
+        error: 'Tipo de mídia não suportado. Use image ou video'
       }, { status: 400 })
     }
 
@@ -124,7 +124,10 @@ export async function POST(
       const file = files[i]
       
       // Validar tipo de arquivo
-      if (!file.type.startsWith('image/')) {
+      if (type === 'image' && !file.type.startsWith('image/')) {
+        continue
+      }
+      if (type === 'video' && !file.type.startsWith('video/')) {
         continue
       }
 
@@ -141,7 +144,9 @@ export async function POST(
         const fileName = `${productId}_${timestamp}_${randomString}.${fileExtension}`
         
         // Criar diretório se não existir
-        const uploadDir = join(process.cwd(), 'public', 'uploads', 'products')
+        const uploadDir = type === 'image' 
+          ? join(process.cwd(), 'public', 'uploads', 'products')
+          : join(process.cwd(), 'public', 'uploads', 'products', 'videos')
         if (!existsSync(uploadDir)) {
           await mkdir(uploadDir, { recursive: true })
         }
@@ -152,30 +157,60 @@ export async function POST(
         const buffer = Buffer.from(bytes)
         await writeFile(filePath, buffer)
 
-        // URL da imagem
-        const imageUrl = `/uploads/products/${fileName}`
+        // URL da mídia
+        const mediaUrl = type === 'image' 
+          ? `/uploads/products/${fileName}`
+          : `/uploads/products/videos/${fileName}`
 
         // Salvar no banco de dados
-        const imageRecord = await prisma.product_images.create({
-          data: {
-            product_id: productId,
-            image_url: imageUrl,
-            file_name: file.name,
-            file_size: file.size,
-            mime_type: file.type,
-            alt_text: altText || file.name,
-            is_primary: isPrimary && i === 0, // Primeira imagem é primária se isPrimary for true
-            sort_order: i
-          }
-        })
+        let insertQuery, queryParams
+        
+        if (type === 'image') {
+          insertQuery = `
+            INSERT INTO product_images (
+              product_id, image_url, file_name, file_size, mime_type, 
+              alt_text, is_primary, sort_order, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+          `
+          queryParams = [
+            productId,
+            mediaUrl,
+            file.name,
+            file.size,
+            file.type,
+            altText || file.name,
+            isPrimary && i === 0 ? 1 : 0,
+            i
+          ]
+        } else {
+          insertQuery = `
+            INSERT INTO product_videos (
+              product_id, video_url, file_name, file_size, mime_type, 
+              alt_text, is_primary, sort_order, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+          `
+          queryParams = [
+            productId,
+            mediaUrl,
+            file.name,
+            file.size,
+            file.type,
+            altText || file.name,
+            isPrimary && i === 0 ? 1 : 0,
+            i
+          ]
+        }
+        
+        const result = await database.query(insertQuery, queryParams)
 
         uploadResults.push({
-          id: imageRecord.id,
-          url: imageUrl,
+          id: result.insertId,
+          url: mediaUrl,
           fileName: file.name,
           fileSize: file.size,
           mimeType: file.type,
-          isPrimary: imageRecord.is_primary
+          isPrimary: isPrimary && i === 0,
+          type: type
         })
 
       } catch (fileError) {
@@ -203,8 +238,6 @@ export async function POST(
       success: false,
       error: 'Erro interno do servidor'
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -234,19 +267,31 @@ export async function PATCH(
       }, { status: 400 })
     }
 
-    if (type === 'image') {
-      if (isPrimary) {
+    if (isPrimary) {
+      if (type === 'image') {
         // Remover primário de todas as imagens do produto
-        await prisma.product_images.updateMany({
-          where: { product_id: productId },
-          data: { is_primary: false }
-        })
+        await database.query(
+          'UPDATE product_images SET is_primary = 0 WHERE product_id = ?',
+          [productId]
+        )
 
         // Definir nova imagem como primária
-        await prisma.product_images.update({
-          where: { id: mediaId },
-          data: { is_primary: true }
-        })
+        await database.query(
+          'UPDATE product_images SET is_primary = 1 WHERE id = ?',
+          [mediaId]
+        )
+      } else if (type === 'video') {
+        // Remover primário de todos os vídeos do produto
+        await database.query(
+          'UPDATE product_videos SET is_primary = 0 WHERE product_id = ?',
+          [productId]
+        ).catch(() => {}) // Ignorar erro se tabela não existir
+
+        // Definir novo vídeo como primário
+        await database.query(
+          'UPDATE product_videos SET is_primary = 1 WHERE id = ?',
+          [mediaId]
+        ).catch(() => {}) // Ignorar erro se tabela não existir
       }
     }
 
@@ -261,8 +306,6 @@ export async function PATCH(
       success: false,
       error: 'Erro interno do servidor'
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -295,22 +338,58 @@ export async function DELETE(
 
     if (type === 'image') {
       // Buscar imagem para obter o caminho do arquivo
-      const image = await prisma.product_images.findUnique({
-        where: { id: parseInt(mediaId) }
-      })
+      const image = await database.query(
+        'SELECT * FROM product_images WHERE id = ?',
+        [parseInt(mediaId)]
+      )
 
-      if (image) {
+      if (image && image.length > 0) {
+        const imageData = image[0]
+        
         // Remover do banco de dados
-        await prisma.product_images.delete({
-          where: { id: parseInt(mediaId) }
-        })
+        await database.query(
+          'DELETE FROM product_images WHERE id = ?',
+          [parseInt(mediaId)]
+        )
 
         // Tentar remover arquivo físico (opcional)
         try {
-          if (image.image_url) {
-            const fileName = image.image_url.split('/').pop()
+          if (imageData.image_url) {
+            const fileName = imageData.image_url.split('/').pop()
             if (fileName) {
               const filePath = join(process.cwd(), 'public', 'uploads', 'products', fileName)
+              if (existsSync(filePath)) {
+                const { unlink } = await import('fs/promises')
+                await unlink(filePath)
+              }
+            }
+          }
+        } catch (fileError) {
+          console.warn('Erro ao remover arquivo físico:', fileError)
+        }
+      }
+    } else if (type === 'video') {
+      // Buscar vídeo para obter o caminho do arquivo
+      const video = await database.query(
+        'SELECT * FROM product_videos WHERE id = ?',
+        [parseInt(mediaId)]
+      ).catch(() => []) // Ignorar erro se tabela não existir
+
+      if (video && video.length > 0) {
+        const videoData = video[0]
+        
+        // Remover do banco de dados
+        await database.query(
+          'DELETE FROM product_videos WHERE id = ?',
+          [parseInt(mediaId)]
+        ).catch(() => {}) // Ignorar erro se tabela não existir
+
+        // Tentar remover arquivo físico (opcional)
+        try {
+          if (videoData.video_url) {
+            const fileName = videoData.video_url.split('/').pop()
+            if (fileName) {
+              const filePath = join(process.cwd(), 'public', 'uploads', 'products', 'videos', fileName)
               if (existsSync(filePath)) {
                 const { unlink } = await import('fs/promises')
                 await unlink(filePath)
@@ -334,7 +413,5 @@ export async function DELETE(
       success: false,
       error: 'Erro interno do servidor'
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect();
   }
 }

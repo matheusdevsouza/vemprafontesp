@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: 'VemPraFonteSP - E-commerce',
   description: 'Loja online moderna com os melhores produtos',
   icons: {
-    icon: '/images/Logo.jpg',
+    icon: '/images/Logo Arte.jpg',
   },
 }
 
@@ -24,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="dark">
       <head>
-        <link rel="icon" type="image/jpeg" href="/images/Logo.jpg" />
+        <link rel="icon" type="image/jpeg" href="/images/Logo Arte.jpg" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>
       <body className={`${inter.className} bg-dark-950 text-white antialiased`}>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/database';
+import database from '@/lib/database';
 
 export async function GET(
   request: NextRequest,
@@ -16,7 +16,7 @@ export async function GET(
     }
 
     // Buscar pedido no banco de dados
-    const orders = await query(`
+    const orders = await database.query(`
       SELECT 
         id,
         order_number,
@@ -48,7 +48,7 @@ export async function GET(
     const order = orders[0];
 
     // Buscar itens do pedido
-    const items = await query(`
+    const items = await database.query(`
       SELECT 
         oi.id,
         oi.product_name,

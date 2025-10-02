@@ -107,17 +107,14 @@ private/logs/
 
 # Pasta privada (dados sensíveis)
 private/
-uploads/
 temp_emails/
 emails/
 tests/
 scripts/
 docs/
 
-# Uploads de usuários (dados pessoais)
-public/uploads/
+# Uploads privados (dados pessoais)
 private/uploads/
-uploads/
 temp_uploads/
 
 # Arquivos temporários de desenvolvimento

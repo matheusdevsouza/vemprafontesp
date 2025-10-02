@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, randomBytes } from 'crypto';
+import { findUserByEmail, decryptFromDatabase } from './transparent-encryption';
 
 // Configurações de segurança
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -394,4 +395,54 @@ export function logSecurityEvent(event: string, details: any): void {
 // Comentado temporariamente para evitar problemas de desenvolvimento
 // if (typeof setInterval !== 'undefined') {
 //   setInterval(cleanupInactiveSessions, 60 * 60 * 1000); // A cada hora
-// } 
+// }
+
+/**
+ * Função de login que funciona com dados criptografados
+ */
+export async function loginWithEncryptedData(email: string, password: string, queryFunction: Function): Promise<{ success: boolean; user?: any; error?: string }> {
+  try {
+    // Busca usuário por email (funciona com dados criptografados)
+    const user = await findUserByEmail(email, queryFunction);
+    
+    if (!user) {
+      return {
+        success: false,
+        error: 'Email ou senha incorretos'
+      };
+    }
+    
+    // Verifica se o usuário está ativo
+    if (!user.is_active) {
+      return {
+        success: false,
+        error: 'Conta desativada. Entre em contato com o suporte.'
+      };
+    }
+    
+    // Compara a senha (não afetada pela criptografia)
+    const isPasswordValid = await comparePassword(password, user.password);
+    
+    if (!isPasswordValid) {
+      return {
+        success: false,
+        error: 'Email ou senha incorretos'
+      };
+    }
+    
+    // Remove a senha dos dados retornados
+    const { password: _, ...userWithoutPassword } = user;
+    
+    return {
+      success: true,
+      user: userWithoutPassword
+    };
+    
+  } catch (error) {
+    console.error('Erro no login:', error);
+    return {
+      success: false,
+      error: 'Erro interno do servidor'
+    };
+  }
+} 

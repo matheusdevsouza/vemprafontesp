@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { getProductById } from '@/lib/database';
+import database from '@/lib/database';
 import { authenticateUser, isAdmin } from '@/lib/auth';
-
-const prisma = new PrismaClient();
 
 export async function GET(
   request: NextRequest,
@@ -27,16 +24,19 @@ export async function GET(
       );
     }
 
-    const product = await getProductById(productId);
+    const product = await database.query(
+      'SELECT * FROM products WHERE id = ?',
+      [productId]
+    );
 
-    if (!product) {
+    if (!product || product.length === 0) {
       return NextResponse.json(
         { error: 'Produto não encontrado' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ product });
+    return NextResponse.json({ product: product[0] });
 
   } catch (error) {
     console.error('Erro ao buscar produto:', error);
@@ -72,24 +72,44 @@ export async function PATCH(
     const body = await request.json();
 
     // Atualizar produto no banco de dados
-    const updatedProduct = await prisma.product.update({
-      where: { id: productId },
-      data: {
-        name: body.name,
-        slug: body.name?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-        description: body.description,
-        price: body.price ? parseFloat(body.price) : undefined,
-        stock_quantity: body.stock_quantity !== undefined ? parseInt(body.stock_quantity) : undefined,
-        is_active: body.is_active !== undefined ? body.is_active : undefined,
-        brand_id: body.brand_id ? parseInt(body.brand_id) : undefined,
-        model_id: body.model_id ? parseInt(body.model_id) : undefined
-      }
-    });
+    const updateQuery = `
+      UPDATE products SET 
+        name = ?, 
+        slug = ?, 
+        description = ?, 
+        price = ?, 
+        stock_quantity = ?, 
+        is_active = ?, 
+        brand_id = ?, 
+        model_id = ?,
+        updated_at = NOW()
+      WHERE id = ?
+    `;
+
+    const slug = body.name?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || '';
+
+    await database.query(updateQuery, [
+      body.name,
+      slug,
+      body.description,
+      body.price ? parseFloat(body.price) : null,
+      body.stock_quantity !== undefined ? parseInt(body.stock_quantity) : null,
+      body.is_active !== undefined ? (body.is_active ? 1 : 0) : null,
+      body.brand_id ? parseInt(body.brand_id) : null,
+      body.model_id ? parseInt(body.model_id) : null,
+      productId
+    ]);
+
+    // Buscar o produto atualizado
+    const updatedProduct = await database.query(
+      'SELECT * FROM products WHERE id = ?',
+      [productId]
+    );
 
     return NextResponse.json({
       success: true,
       message: 'Produto atualizado com sucesso',
-      product: updatedProduct
+      product: updatedProduct[0]
     });
 
   } catch (error) {
@@ -98,8 +118,6 @@ export async function PATCH(
       { error: 'Erro interno do servidor' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -127,26 +145,48 @@ export async function DELETE(
     }
 
     // Verificar se o produto existe
-    const existingProduct = await prisma.product.findUnique({
-      where: { id: productId }
-    });
+    const existingProduct = await database.query(
+      'SELECT id FROM products WHERE id = ?',
+      [productId]
+    );
 
-    if (!existingProduct) {
+    if (!existingProduct || existingProduct.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Produto não encontrado' },
         { status: 404 }
       );
     }
 
-    // Remover imagens associadas primeiro
-    await prisma.product_images.deleteMany({
-      where: { product_id: productId }
-    });
+    // Remover imagens associadas primeiro (se existirem)
+    await database.query(
+      'DELETE FROM product_images WHERE product_id = ?',
+      [productId]
+    );
 
-    // Remover o produto
-    await prisma.product.delete({
-      where: { id: productId }
-    });
+    // Remover variantes do produto (se existirem)
+    await database.query(
+      'DELETE FROM product_variants WHERE product_id = ?',
+      [productId]
+    );
+
+    // Remover reviews do produto (se existirem)
+    await database.query(
+      'DELETE FROM product_reviews WHERE product_id = ?',
+      [productId]
+    );
+
+    // Remover itens de pedidos que referenciam este produto (se existirem)
+    // Nota: Isso pode afetar pedidos existentes, considere usar soft delete
+    await database.query(
+      'DELETE FROM order_items WHERE product_id = ?',
+      [productId]
+    );
+
+    // Finalmente, remover o produto
+    await database.query(
+      'DELETE FROM products WHERE id = ?',
+      [productId]
+    );
 
     return NextResponse.json({
       success: true,
@@ -159,7 +199,5 @@ export async function DELETE(
       { success: false, error: 'Erro interno do servidor' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

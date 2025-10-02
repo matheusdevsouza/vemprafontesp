@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/database';
+import database from '@/lib/database';
 import { authenticateUser } from '@/lib/auth';
 // Removida importação de descriptografia - dados agora em texto simples
 
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       recentProducts
     ] = await Promise.all([
       // Estatísticas de produtos
-      query(`
+      database.query(`
         SELECT 
           COUNT(*) as total,
           SUM(stock_quantity) as totalStock,
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       `),
       
       // Estatísticas de pedidos
-      query(`
+      database.query(`
         SELECT 
           COUNT(*) as total,
           SUM(total_amount) as totalRevenue,
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       `),
       
       // Estatísticas de usuários
-      query(`
+      database.query(`
         SELECT 
           COUNT(*) as total,
           COUNT(CASE WHEN created_at >= ? THEN 1 END) as newThisPeriod
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
       `, [startDate]),
       
       // Estatísticas de receita
-      query(`
+      database.query(`
         SELECT 
           SUM(CASE WHEN created_at >= ? THEN total_amount ELSE 0 END) as current,
           SUM(CASE WHEN created_at < ? AND created_at >= ? THEN total_amount ELSE 0 END) as previous
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       `, [startDate, startDate, new Date(startDate.getTime() - (now.getTime() - startDate.getTime()))]),
       
       // Pedidos recentes
-      query(`
+      database.query(`
         SELECT 
           o.id,
           o.order_number,
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       `),
       
       // Produtos recentes
-      query(`
+      database.query(`
         SELECT 
           p.id,
           p.name,

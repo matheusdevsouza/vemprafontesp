@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser } from '@/lib/auth';
-import { query } from '@/lib/database';
+import database from '@/lib/database';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const userId = user.userId;
 
     // Buscar todos os pedidos do usuário
-    const orders = await query(`
+    const orders = await database.query(`
       SELECT 
         o.id,
         o.order_number,
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     // Buscar itens de cada pedido
     for (const order of orders) {
-      const items = await query(`
+      const items = await database.query(`
         SELECT 
           oi.id,
           oi.product_id,

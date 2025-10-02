@@ -13,6 +13,12 @@ import {
   searchUserByEmail,
   ENCRYPTION_ENABLED
 } from './encryption'
+import { 
+  encryptForDatabase, 
+  decryptFromDatabase, 
+  ENCRYPTION_FIELDS,
+  encryptValue
+} from './transparent-encryption'
 
 interface DBConfig {
   host: string
@@ -66,6 +72,7 @@ interface Customer {
   name: string
   email: string
   phone?: string
+  cpf?: string
 }
 
 interface ShippingAddress {
@@ -138,7 +145,7 @@ export function getPool(): mysql.Pool {
   return pool as mysql.Pool
 }
 
-export async function query(sql: string, params: any[] = []): Promise<any> {
+async function query(sql: string, params: any[] = []): Promise<any> {
   try {
     const pool = getPool()
     const [results] = await pool.execute(sql, params)
@@ -255,67 +262,99 @@ export async function getProducts(filters: ProductFilters = {}): Promise<any[]> 
 }
 
 export async function getProductById(id: number): Promise<any | null> {
-  const sql = `
-    SELECT p.*, b.name as brand_name, c.name as category_name, s.name as subcategory_name
-    FROM products p
-    LEFT JOIN brands b ON p.brand_id = b.id
-    LEFT JOIN categories c ON p.category_id = c.id
-    LEFT JOIN subcategories s ON p.subcategory_id = s.id
-    WHERE p.id = ? AND p.is_active = TRUE
-  `
-  
-  const results = await query(sql, [id])
-  return results[0] || null
+  try {
+    const sql = `
+      SELECT p.*, b.name as brand_name, c.name as category_name, s.name as subcategory_name
+      FROM products p
+      LEFT JOIN brands b ON p.brand_id = b.id
+      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN subcategories s ON p.subcategory_id = s.id
+      WHERE p.id = ? AND p.is_active = TRUE
+    `
+    
+    const results = await query(sql, [id])
+    return results[0] || null
+  } catch (error) {
+    console.error('Erro ao buscar produto por ID:', error);
+    return null;
+  }
 }
 
 export async function getProductBySlug(slug: string): Promise<any | null> {
-  const sql = `
-    SELECT p.*, b.name as brand_name, c.name as category_name, s.name as subcategory_name
-    FROM products p
-    LEFT JOIN brands b ON p.brand_id = b.id
-    LEFT JOIN categories c ON p.category_id = c.id
-    LEFT JOIN subcategories s ON p.subcategory_id = s.id
-    WHERE p.slug = ? AND p.is_active = TRUE
-  `;
-  const results = await query(sql, [slug]);
-  return results[0] || null;
+  try {
+    const sql = `
+      SELECT p.*, b.name as brand_name, c.name as category_name, s.name as subcategory_name
+      FROM products p
+      LEFT JOIN brands b ON p.brand_id = b.id
+      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN subcategories s ON p.subcategory_id = s.id
+      WHERE p.slug = ? AND p.is_active = TRUE
+    `;
+    const results = await query(sql, [slug]);
+    return results[0] || null;
+  } catch (error) {
+    console.error('Erro ao buscar produto por slug:', error);
+    return null;
+  }
 }
 
 export async function getProductImages(productId: number): Promise<any[]> {
-  const sql = `
-    SELECT * FROM product_images 
-    WHERE product_id = ? 
-    ORDER BY is_primary DESC, sort_order ASC, id ASC
-  `;
-  return await query(sql, [productId]);
+  try {
+    const sql = `
+      SELECT * FROM product_images 
+      WHERE product_id = ? 
+      ORDER BY is_primary DESC, sort_order ASC, id ASC
+    `;
+    return await query(sql, [productId]);
+  } catch (error) {
+    console.error('Erro ao buscar imagens do produto:', error);
+    return [];
+  }
 }
 
 export async function getProductVideos(productId: number): Promise<any[]> {
-  const sql = `
-    SELECT * FROM product_videos 
-    WHERE product_id = ? 
-    ORDER BY is_primary DESC, sort_order ASC, id ASC
-  `;
-  return await query(sql, [productId]);
+  try {
+    const sql = `
+      SELECT * FROM product_videos 
+      WHERE product_id = ? 
+      ORDER BY is_primary DESC, sort_order ASC, id ASC
+    `;
+    return await query(sql, [productId]);
+  } catch (error) {
+    // Se a tabela product_videos não existir, retornar array vazio
+    console.warn('Tabela product_videos não encontrada, retornando array vazio');
+    return [];
+  }
 }
 
 export async function getProductMedia(productId: number): Promise<{ images: any[], videos: any[] }> {
-  const [images, videos] = await Promise.all([
-    getProductImages(productId),
-    getProductVideos(productId)
-  ]);
-  
-  return { images, videos };
+  try {
+    const [images, videos] = await Promise.all([
+      getProductImages(productId),
+      getProductVideos(productId)
+    ]);
+    
+    return { images, videos };
+  } catch (error) {
+    console.error('Erro ao buscar mídia do produto:', error);
+    return { images: [], videos: [] };
+  }
 }
 
 export async function getProductVariants(productId: number): Promise<any[]> {
-  const sql = `
-    SELECT DISTINCT size, id, product_id, is_active, created_at, updated_at
-    FROM product_variants 
-    WHERE product_id = ? AND is_active = TRUE
-    ORDER BY size ASC
-  `
-  return await query(sql, [productId])
+  try {
+    const sql = `
+      SELECT DISTINCT size, id, product_id, is_active, created_at, updated_at
+      FROM product_variants 
+      WHERE product_id = ? AND is_active = TRUE
+      ORDER BY size ASC
+    `
+    return await query(sql, [productId])
+  } catch (error) {
+    // Se a tabela product_variants não existir, retornar array vazio
+    console.warn('Tabela product_variants não encontrada, retornando array vazio');
+    return [];
+  }
 }
 
 export async function getAvailableColors(): Promise<any[]> {
@@ -408,8 +447,8 @@ export async function createOrder(orderData: OrderData): Promise<{ orderId: numb
     INSERT INTO orders (
       user_id, order_number, external_reference, status, payment_status,
       subtotal, shipping_cost, total_amount, customer_name, customer_email,
-      customer_phone, shipping_address
-    ) VALUES (?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?)
+      customer_phone, customer_cpf, shipping_address
+    ) VALUES (?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?, ?)
   `
   
   const orderNumber = `VPF${Date.now()}`
@@ -425,6 +464,7 @@ export async function createOrder(orderData: OrderData): Promise<{ orderId: numb
     customer.name,
     customer.email,
     customer.phone,
+    customer.cpf || null,
     JSON.stringify(shipping_address)
   ]
   
@@ -488,40 +528,46 @@ export interface CreateUserData {
   gender?: 'M' | 'F' | 'Other';
 }
 
-export async function createUser(userData: CreateUserData): Promise<any> {
-  // Criptografar dados sensíveis antes de salvar
-  const encryptedData = encryptPersonalData(userData);
-  
+async function createUser(userData: CreateUserData): Promise<any> {
+  // Dados em texto plano - a criptografia transparente será aplicada automaticamente
   const sql = `
     INSERT INTO users (name, email, password, phone, cpf, birth_date, gender, email_verified_at, is_active)
     VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 1)
   `;
   
   const params = [
-    encryptedData.name,
-    encryptedData.email,
-    encryptedData.password, // Já deve estar hasheada
-    encryptedData.phone || null,
-    encryptedData.cpf || null,
-    encryptedData.birth_date || null,
-    encryptedData.gender || null,
+    userData.name,
+    userData.email,
+    userData.password, // Já deve estar hasheada
+    userData.phone || null,
+    userData.cpf || null,
+    userData.birth_date || null,
+    userData.gender || null,
   ];
   
-  return await query(sql, params);
+  return await queryWithEncryption(sql, params, 'users');
 }
 
-export async function getUserByEmail(email: string): Promise<any> {
-  // Email fica em texto plano para busca funcionar
-  const sql = `SELECT * FROM users WHERE email = ? AND is_active = 1`;
-  const result = await query(sql, [email]);
+async function getUserByEmail(email: string): Promise<any> {
+  // Buscar todos os usuários ativos para descriptografar e comparar emails
+  const sql = `SELECT * FROM users WHERE is_active = 1`;
+  const result = await queryWithEncryption(sql, [], 'users');
   
-  if (result[0]) {
-    // Descriptografar outros campos sensíveis (email já está em texto plano)
-    try {
-      return decryptPersonalData(result[0]);
-    } catch (error) {
-      console.warn('Erro ao descriptografar dados do usuário, retornando dados originais:', error);
-      return result[0];
+  if (result && result.length > 0) {
+    // Procurar o usuário com o email correspondente
+    const user = result.find((user: any) => {
+      try {
+        const decryptedEmail = user.email?.toLowerCase()?.trim();
+        return decryptedEmail === email.toLowerCase().trim();
+      } catch (error) {
+        console.warn('Erro ao comparar email:', error);
+        return false;
+      }
+    });
+    
+    if (user) {
+      console.log('✅ Usuário encontrado via busca criptografada');
+      return user;
     }
   }
   
@@ -568,13 +614,13 @@ export async function updateUserEmailVerification(userId: number): Promise<any> 
   return await query(sql, [userId]);
 }
 
-export async function updateUserLastLogin(userId: number): Promise<any> {
+async function updateUserLastLogin(userId: number): Promise<any> {
   const sql = `UPDATE users SET last_login = NOW() WHERE id = ?`;
   return await query(sql, [userId]);
 }
 
 // TOKENS DE VERIFICAÇÃO
-export async function createVerificationToken(userId: number, token: string): Promise<any> {
+async function createVerificationToken(userId: number, token: string): Promise<any> {
   const sql = `
     INSERT INTO email_verification_tokens (user_id, token, expires_at)
     VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))
@@ -662,7 +708,8 @@ export async function getProductReviews(productId: number, limit: number = 10): 
     `
     return await query(sql, [productId, limit])
   } catch (error) {
-    console.error('Erro ao buscar reviews do produto:', error)
+    // Se a tabela product_reviews não existir, retornar array vazio
+    console.warn('Tabela product_reviews não encontrada, retornando array vazio');
     return []
   }
 }
@@ -1090,8 +1137,114 @@ export async function getOrderById(orderId: number): Promise<any | null> {
   return results[0] || null;
 }
 
+/**
+ * Função query com criptografia transparente
+ * Aplica criptografia/descriptografia automaticamente baseado na operação
+ */
+export async function queryWithEncryption(sql: string, params: any[] = [], tableName?: string): Promise<any> {
+  let connection;
+  try {
+    console.log('🚀 [CRYPTO] queryWithEncryption CHAMADA!');
+    console.log('🔍 [CRYPTO] SQL:', sql.substring(0, 100) + '...');
+    console.log('📊 [CRYPTO] Parâmetros:', params.length);
+    console.log('🗝️ [CRYPTO] Tabela:', tableName);
+    
+    if (!pool) {
+      throw new Error('Database pool not initialized');
+    }
+    connection = await pool.getConnection();
+    
+    // Determinar se é uma operação de INSERT/UPDATE ou SELECT
+    const isInsert = sql.toUpperCase().includes('INSERT');
+    const isUpdate = sql.toUpperCase().includes('UPDATE');
+    const isSelect = sql.toUpperCase().includes('SELECT');
+    
+    let processedSql = sql;
+    let processedParams = [...params];
+    
+    // Detectar tabela automaticamente se não fornecida
+    if (!tableName) {
+      const insertMatch = sql.match(/INSERT\s+INTO\s+(\w+)/i);
+      const updateMatch = sql.match(/UPDATE\s+(\w+)/i);
+      const selectMatch = sql.match(/FROM\s+(\w+)/i);
+      
+      if (insertMatch) tableName = insertMatch[1];
+      else if (updateMatch) tableName = updateMatch[1];
+      else if (selectMatch) tableName = selectMatch[1];
+    }
+    
+    // Para operações de INSERT/UPDATE, criptografar dados antes de salvar
+    if ((isInsert || isUpdate) && tableName) {
+      const fieldsToEncrypt = ENCRYPTION_FIELDS[tableName as keyof typeof ENCRYPTION_FIELDS];
+      
+      if (fieldsToEncrypt) {
+        console.log('🔐 [DB] Campos para criptografar:', fieldsToEncrypt);
+        
+        // Para INSERT, vamos assumir que os parâmetros estão na mesma ordem dos campos
+        if (isInsert) {
+          // Extrair nomes dos campos do SQL
+          const fieldMatch = sql.match(/INSERT\s+INTO\s+\w+\s*\(([^)]+)\)/i);
+          if (fieldMatch) {
+            const fieldNames = fieldMatch[1].split(',').map(f => f.trim());
+            console.log('📋 [DB] Campos detectados:', fieldNames);
+            
+            // Criptografar parâmetros correspondentes aos campos sensíveis
+            fieldsToEncrypt.forEach(fieldToEncrypt => {
+              const fieldIndex = fieldNames.indexOf(fieldToEncrypt);
+              if (fieldIndex !== -1 && processedParams[fieldIndex]) {
+                console.log(`🔐 [DB] Criptografando campo ${fieldToEncrypt} no índice ${fieldIndex}: ${processedParams[fieldIndex]}`);
+                processedParams[fieldIndex] = encryptValue(processedParams[fieldIndex]);
+                console.log(`✅ [DB] Campo ${fieldToEncrypt} criptografado: ${processedParams[fieldIndex]}`);
+              }
+            });
+          }
+        }
+      }
+    }
+    
+    const [rows] = await connection.execute(processedSql, processedParams);
+    
+    // Para operações de SELECT, descriptografar dados após ler
+    if (isSelect && tableName && rows) {
+      const fieldsToDecrypt = ENCRYPTION_FIELDS[tableName as keyof typeof ENCRYPTION_FIELDS];
+      
+      if (fieldsToDecrypt && Array.isArray(rows)) {
+        console.log(`🔓 [DECRYPTION] Descriptografando ${rows.length} registros da tabela ${tableName}`);
+        
+        const decryptedRows = rows.map(row => decryptFromDatabase(tableName as string, row));
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ [DB] Query executada com descriptografia automática');
+        }
+        
+        return decryptedRows;
+      }
+    }
+    
+    // Log do resultado para debug (apenas em desenvolvimento)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ [DB] Query executada com sucesso');
+      console.log('📋 [DB] Resultado:', Array.isArray(rows) ? `${rows.length} registros` : 'Não é array');
+    }
+    
+    return rows;
+  } catch (error) {
+    console.error('❌ [DB] Erro na query:', error);
+    console.error('🔍 [DB] SQL:', sql);
+    console.error('📊 [DB] Parâmetros:', params);
+    throw error;
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+}
+
+// Substituir a função query pela versão com criptografia transparente
+const originalQuery = query;
+
 const database = { 
-  query, 
+  query: queryWithEncryption, 
   transaction, 
   getProducts, 
   getProductById, 
@@ -1111,7 +1264,11 @@ const database = {
   searchProducts,
   getOrderByTrackingCode,
   getOrderItems,
-  getOrderById
+  getOrderById,
+  createUser,
+  getUserByEmail,
+  createVerificationToken,
+  updateUserLastLogin
 }
 
 export default database 

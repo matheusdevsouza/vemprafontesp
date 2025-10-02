@@ -120,6 +120,7 @@ model Order {
   customer_name      String?                @db.VarChar(255)
   customer_email     String?                @db.VarChar(255)
   customer_phone     String?                @db.VarChar(20)
+  customer_cpf       String?                @db.VarChar(14)
   shipping_address   String?                @db.Text
   notes              String?                @db.Text
   shipped_at         DateTime?              @db.Timestamp(0)

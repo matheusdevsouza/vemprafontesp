@@ -86,15 +86,15 @@ export default function AdminLayout({
       </AnimatePresence>
 
       {/* Sidebar - Always visible on desktop, animated on mobile */}
-      <div className="hidden lg:flex lg:flex-col lg:w-72 bg-dark-900/95 backdrop-blur-md border-r border-dark-700/50 shadow-2xl">
+      <div className="hidden lg:flex lg:flex-col lg:w-64 xl:w-72 bg-dark-900/95 backdrop-blur-md border-r border-dark-700/50 shadow-2xl">
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between h-16 px-6 bg-gradient-to-r from-primary-600 to-primary-700 border-b border-primary-500/30">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between h-16 px-4 lg:px-6 bg-gradient-to-r from-primary-600 to-primary-700 border-b border-primary-500/30">
+          <div className="flex items-center gap-2 lg:gap-3">
             <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
               <FaChartLine className="text-white text-lg" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">Admin Panel</h1>
+              <h1 className="text-sm lg:text-lg font-bold text-white">Admin Panel</h1>
               <p className="text-primary-100 text-xs">VemPraFonte</p>
             </div>
           </div>
@@ -309,9 +309,11 @@ export default function AdminLayout({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="flex-1 p-6 bg-dark-950 overflow-auto"
+          className="flex-1 p-4 lg:p-6 bg-dark-950 overflow-auto max-w-full"
         >
-          {children}
+          <div className="max-w-full overflow-hidden">
+            {children}
+          </div>
         </motion.main>
       </div>
     </div>

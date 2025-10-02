@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { comparePassword, generateToken, setAuthCookie } from '@/lib/auth';
-import { getUserByEmail, updateUserLastLogin } from '@/lib/database';
+import { generateToken, setAuthCookie, loginWithEncryptedData } from '@/lib/auth';
+import database from '@/lib/database';
 import { applySimpleRateLimit } from '@/lib/simple-rate-limiter';
+import { decryptFromDatabase } from '@/lib/transparent-encryption';
 // Headers de segurança gerenciados pelo Nginx
 import { validateCSRFRequest, createCSRFResponse } from '@/lib/csrf-protection';
 
@@ -128,23 +129,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Buscar usuário
-    const user = await getUserByEmail(email);
-    if (!user) {
+    // Buscar usuário usando sistema de criptografia transparente
+    const loginResult = await loginWithEncryptedData(email, password, database.query);
+    
+    if (!loginResult.success) {
       return NextResponse.json(
-        { success: false, message: 'E-mail ou senha incorretos' },
+        { success: false, message: loginResult.error },
         { status: 401 }
       );
     }
-
-    // Verificar senha
-    const isPasswordValid = await comparePassword(password, user.password);
-    if (!isPasswordValid) {
-      return NextResponse.json(
-        { success: false, message: 'E-mail ou senha incorretos' },
-        { status: 401 }
-      );
-    }
+    
+    // Descriptografar dados do usuário para exibição
+    const user = decryptFromDatabase('users', loginResult.user);
 
     // Verificar se o e-mail está verificado
     if (!user.email_verified_at) {
@@ -167,7 +163,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Atualizar último login
-    await updateUserLastLogin(user.id);
+    await database.updateUserLastLogin(user.id);
 
     // Gerar token JWT com todos os campos necessários
     const tokenPayload = {

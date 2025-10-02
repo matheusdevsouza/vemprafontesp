@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/database';
-// Removida importação de decryptForAdmin - dados agora em texto simples
+import database from '@/lib/database';
 import { authenticateUser } from '@/lib/auth';
+import { decryptFromDatabase } from '@/lib/transparent-encryption';
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit;
     
-    const orders = await query(`
+    const orders = await database.query(`
       SELECT * FROM orders 
       ${whereClause}
       ORDER BY created_at DESC 
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     `, [...params, limit.toString(), offset.toString()]);
 
     // Contar total de pedidos para paginação
-    const totalResult = await query(`
+    const totalResult = await database.query(`
       SELECT COUNT(*) as total FROM orders 
       ${whereClause}
     `, params);
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     const totalOrders = totalResult[0].total;
 
     // Buscar estatísticas de pedidos
-    const [statsResult] = await query(`
+    const [statsResult] = await database.query(`
       SELECT 
         COUNT(*) as totalOrders,
         SUM(total_amount) as totalRevenue,
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     
     if (orderIds.length > 0) {
       const placeholders = orderIds.map(() => '?').join(',');
-      const [items] = await query(`
+      const [items] = await database.query(`
         SELECT 
           order_id,
           product_name,
@@ -126,28 +126,31 @@ export async function GET(request: NextRequest) {
       return acc;
     }, {});
 
-    // Processar dados para o painel admin (dados já estão em texto simples)
-    const processedOrders = orders.map((order: any) => ({
-      id: order.id,
-      order_number: order.order_number,
-      customer_name: order.customer_name || 'Cliente não identificado', // Nome já está em texto plano
-      customer_email: order.customer_email, // Email já está em texto plano
-      customer_phone: order.customer_phone, // Telefone já está em texto plano
-      customer_address: order.shipping_address, // Endereço já está em texto plano
-      total_amount: parseFloat(order.total_amount),
-      status: order.status,
-      payment_status: order.payment_status,
-      // Normalização para camelCase esperado no frontend
-      createdAt: order.created_at,
-      updatedAt: order.updated_at,
-      tracking_code: order.tracking_code,
-      tracking_url: order.tracking_url,
-      shipping_company: order.shipping_company,
-      shipping_status: order.shipping_status,
-      subtotal: parseFloat(order.subtotal),
-      shipping_cost: parseFloat(order.shipping_cost),
-      items: itemsByOrder[order.id] || []
-    }));
+    // Processar dados para o painel admin (descriptografar dados automaticamente)
+    const processedOrders = orders.map((order: any) => {
+      const decryptedOrder = decryptFromDatabase('orders', order);
+      return {
+        id: decryptedOrder.id,
+        order_number: decryptedOrder.order_number,
+        customer_name: decryptedOrder.customer_name || 'Cliente não identificado',
+        customer_email: decryptedOrder.customer_email,
+        customer_phone: decryptedOrder.customer_phone,
+        customer_address: decryptedOrder.shipping_address,
+        total_amount: parseFloat(decryptedOrder.total_amount),
+        status: decryptedOrder.status,
+        payment_status: decryptedOrder.payment_status,
+        // Normalização para camelCase esperado no frontend
+        createdAt: decryptedOrder.created_at,
+        updatedAt: decryptedOrder.updated_at,
+        tracking_code: decryptedOrder.tracking_code,
+        tracking_url: decryptedOrder.tracking_url,
+        shipping_company: decryptedOrder.shipping_company,
+        shipping_status: decryptedOrder.shipping_status,
+        subtotal: parseFloat(decryptedOrder.subtotal),
+        shipping_cost: parseFloat(decryptedOrder.shipping_cost),
+        items: itemsByOrder[decryptedOrder.id] || []
+      };
+    });
 
     const stats = {
       totalOrders: parseInt(statsResult.totalOrders) || 0,

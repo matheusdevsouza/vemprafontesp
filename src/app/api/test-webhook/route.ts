@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/database';
+import database from '@/lib/database';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       const orderNumber = body.order_number || 'VPF-2025-TEST';
       
       // Atualizar pedido de teste
-      const result = await query(`
+      const result = await database.query(`
         UPDATE orders 
         SET 
           status = 'paid',

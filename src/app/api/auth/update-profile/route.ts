@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateUser, isAuthenticated } from "@/lib/auth";
-import { getUserById, getPool } from "@/lib/database";
-import { encrypt, encryptPersonalData } from "@/lib/encryption";
+import { getUserById, getPool, query } from "@/lib/database";
+import { encryptForDatabase } from "@/lib/transparent-encryption";
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -28,19 +28,19 @@ export async function PATCH(request: NextRequest) {
 
     if (name !== undefined) {
       updateFields.push("name = ?");
-      updateValues.push(encrypt(name));
+      updateValues.push(name);
     }
     if (display_name !== undefined) {
       updateFields.push("display_name = ?");
-      updateValues.push(encrypt(display_name));
+      updateValues.push(display_name);
     }
     if (phone !== undefined) {
       updateFields.push("phone = ?");
-      updateValues.push(encrypt(phone));
+      updateValues.push(phone);
     }
     if (cpf !== undefined) {
       updateFields.push("cpf = ?");
-      updateValues.push(encrypt(cpf));
+      updateValues.push(cpf);
     }
     if (birth_date !== undefined) {
       updateFields.push("birth_date = ?");
@@ -52,7 +52,7 @@ export async function PATCH(request: NextRequest) {
     }
     if (address !== undefined) {
       updateFields.push("address = ?");
-      updateValues.push(encrypt(address));
+      updateValues.push(address);
     }
 
     if (updateFields.length === 0) {
@@ -62,12 +62,35 @@ export async function PATCH(request: NextRequest) {
     updateFields.push("updated_at = NOW()");
     updateValues.push(userId);
 
+    // Preparar dados para criptografia transparente
+    const updateData = {};
+    const originalValues = [...updateValues];
+    
+    if (name !== undefined) updateData.name = name;
+    if (display_name !== undefined) updateData.display_name = display_name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (cpf !== undefined) updateData.cpf = cpf;
+    if (address !== undefined) updateData.address = address;
+    
+    // Aplicar criptografia transparente
+    const encryptedData = encryptForDatabase('users', updateData);
+    
+    // Atualizar valores com dados criptografados
+    let valueIndex = 0;
+    if (name !== undefined) updateValues[valueIndex++] = encryptedData.name || name;
+    if (display_name !== undefined) updateValues[valueIndex++] = encryptedData.display_name || display_name;
+    if (phone !== undefined) updateValues[valueIndex++] = encryptedData.phone || phone;
+    if (cpf !== undefined) updateValues[valueIndex++] = encryptedData.cpf || cpf;
+    if (birth_date !== undefined) updateValues[valueIndex++] = originalValues[valueIndex];
+    if (gender !== undefined) updateValues[valueIndex++] = originalValues[valueIndex];
+    if (address !== undefined) updateValues[valueIndex++] = encryptedData.address || address;
+
     const sql = `UPDATE users SET ${updateFields.join(", ")} WHERE id = ?`;
     console.log("SQL Query:", sql);
     console.log("Values:", updateValues);
 
     const pool = getPool();
-    const result = await pool.query(sql, updateValues);
+    const result = await pool.database.query(sql, updateValues);
     console.log("Update result:", result);
 
     const updatedUser = await getUserById(userId);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/database';
-import { decrypt, decryptUsersForAdmin } from '@/lib/encryption';
+import database from '@/lib/database';
 import { authenticateUser } from '@/lib/auth';
+import { decryptFromDatabase } from '@/lib/transparent-encryption';
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit;
     
-    const users = await query(`
+    const users = await database.query(`
       SELECT 
         u.id, 
         u.name, 
@@ -60,39 +60,31 @@ export async function GET(request: NextRequest) {
     `, [...params, limit.toString(), offset.toString()]);
 
     // Contar total de usuários para paginação
-    const totalResult = await query(`
+    const totalResult = await database.query(`
       SELECT COUNT(*) as total FROM users 
       ${whereClause}
     `, params);
     
     const totalUsers = totalResult[0].total;
 
-    // DESCRIPTOGRAFIA INTELIGENTE E AUTOMÁTICA PARA ADMIN
-    console.log(`🔓 Iniciando descriptografia automática de ${users.length} usuários para admin...`);
-    
-    // Usar a função inteligente de descriptografia para admin
-    const decryptedUsers = decryptUsersForAdmin(users).map((user: any) => {
+    // Descriptografar dados de todos os usuários
+    const decryptedUsers = users.map((user: any) => {
+      const decryptedUser = decryptFromDatabase('users', user);
       return {
-        id: user.id,
-        uuid: user.user_uuid, // Incluir UUID para maior segurança
-        name: user.name || 'Nome não informado',
-        email: user.email || 'Email não informado',
-        phone: user.phone,
-        address: user.address,
-        role: user.is_admin ? 'admin' : 'user',
-        status: user.is_active ? 'active' : 'inactive',
+        id: decryptedUser.id,
+        name: decryptedUser.name || 'Nome não informado',
+        email: decryptedUser.email || 'Email não informado',
+        phone: decryptedUser.phone,
+        address: decryptedUser.address,
+        role: decryptedUser.is_admin ? 'admin' : 'user',
+        status: decryptedUser.is_active ? 'active' : 'inactive',
         orderCount: parseInt(user.orderCount) || 0,
         totalSpent: parseFloat(user.totalSpent) || 0,
-        lastLogin: user.last_login ? new Date(user.last_login).toLocaleDateString('pt-BR') : null,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at,
-        // Metadados de descriptografia (apenas para debug em desenvolvimento)
-        _decryption_status: user._decryption_status,
-        _decrypted_at: user._decrypted_at
+        lastLogin: decryptedUser.last_login ? new Date(decryptedUser.last_login).toLocaleDateString('pt-BR') : null,
+        createdAt: decryptedUser.created_at,
+        updatedAt: decryptedUser.updated_at
       };
     });
-    
-    console.log(`✅ Descriptografia automática concluída com sucesso!`);
 
     return NextResponse.json({
       success: true,

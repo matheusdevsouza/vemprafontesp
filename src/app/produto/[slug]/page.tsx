@@ -10,6 +10,7 @@ import { useCart } from '@/contexts/CartContext'
 import { useCallback } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHome, faShoePrints, faCheck, faMoneyBillWave } from '@fortawesome/free-solid-svg-icons';
+import CustomVideoPlayer from '@/components/CustomVideoPlayer';
 
 export default function ProdutoPage() {
   const { slug } = useParams();
@@ -67,6 +68,17 @@ export default function ProdutoPage() {
     if (!a.isPrimary && b.isPrimary) return 1;
     return 0;
   }), [images, videos]);
+
+  // Auto-disable zoom for videos
+  const isCurrentMediaVideo = allMedia[selectedImage]?.type === 'video';
+  const effectiveZoomEnabled = zoomEnabled && !isCurrentMediaVideo;
+  
+  // Reset zoom position when switching to video
+  useEffect(() => {
+    if (isCurrentMediaVideo) {
+      setZoomPos(null);
+    }
+  }, [isCurrentMediaVideo]);
 
   const toggleFavorite = () => {
     setIsFavorite(!isFavorite);
@@ -252,11 +264,11 @@ export default function ProdutoPage() {
                 <div
                   ref={zoomRef}
                   className={`relative w-full aspect-square rounded-2xl overflow-hidden bg-dark-800 border border-dark-700/50 shadow-2xl transition-all duration-300 ${
-                    zoomEnabled 
+                    effectiveZoomEnabled 
                       ? 'cursor-zoom-in border-primary-500/50 ring-2 ring-primary-500/20' 
                       : 'cursor-pointer hover:border-primary-400/50'
                   }`}
-                  onMouseMove={zoomEnabled ? (e) => {
+                  onMouseMove={effectiveZoomEnabled ? (e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     const x = e.clientX - rect.left;
                     const y = e.clientY - rect.top;
@@ -272,11 +284,10 @@ export default function ProdutoPage() {
                   {allMedia[selectedImage] && (
                     <>
                       {allMedia[selectedImage].type === 'video' ? (
-                        <video
+                        <CustomVideoPlayer
                           src={allMedia[selectedImage].url}
-                          className="w-full h-full object-cover object-top transition-transform duration-300"
-                          controls
-                          preload="metadata"
+                          alt={allMedia[selectedImage].alt || 'Vídeo do produto'}
+                          className="w-full h-full"
                         />
                       ) : (
                         <Image
@@ -293,7 +304,7 @@ export default function ProdutoPage() {
 
                   {/* Lupa circular melhorada com animação */}
                   <AnimatePresence>
-                  {zoomEnabled && zoomPos && allMedia[selectedImage] && allMedia[selectedImage].type === 'image' && zoomRef.current && (
+                  {effectiveZoomEnabled && zoomPos && allMedia[selectedImage] && allMedia[selectedImage].type === 'image' && zoomRef.current && (
                       <motion.div
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -318,14 +329,25 @@ export default function ProdutoPage() {
                   <div className="absolute top-4 right-4 flex gap-2">
                     <button
                       onClick={() => setZoomEnabled(!zoomEnabled)}
+                      disabled={isCurrentMediaVideo}
                       className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-sm ${
-                        zoomEnabled 
-                          ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' 
-                          : 'bg-dark-800/90 text-gray-300 hover:bg-primary-500 hover:text-white hover:shadow-lg hover:shadow-primary-500/30'
+                        isCurrentMediaVideo
+                          ? 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
+                          : effectiveZoomEnabled 
+                            ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' 
+                            : 'bg-dark-800/90 text-gray-300 hover:bg-primary-500 hover:text-white hover:shadow-lg hover:shadow-primary-500/30'
                       }`}
-                      title={zoomEnabled ? 'Desativar zoom' : 'Ativar zoom'}
+                      title={isCurrentMediaVideo ? 'Zoom não disponível para vídeos' : effectiveZoomEnabled ? 'Desativar zoom' : 'Ativar zoom'}
                     >
-                      {zoomEnabled ? <MagnifyingGlassMinus size={20} /> : <MagnifyingGlass size={20} />}
+                      {isCurrentMediaVideo ? (
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                      ) : effectiveZoomEnabled ? (
+                        <MagnifyingGlassMinus size={20} />
+                      ) : (
+                        <MagnifyingGlass size={20} />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -333,8 +355,19 @@ export default function ProdutoPage() {
                 {/* Instrução de zoom melhorada */}
                 <div className="text-center mt-4">
                   <span className="text-xs text-gray-500 flex items-center justify-center gap-2 bg-dark-800/50 px-3 py-2 rounded-full">
-                    <MagnifyingGlass size={14} />
-                    {zoomEnabled ? 'Zoom ativo • Mova o mouse sobre a imagem' : 'Clique no ícone de lupa para ativar o zoom'}
+                    {isCurrentMediaVideo ? (
+                      <>
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        Zoom não disponível para vídeos
+                      </>
+                    ) : (
+                      <>
+                        <MagnifyingGlass size={14} />
+                        {effectiveZoomEnabled ? 'Zoom ativo • Mova o mouse sobre a imagem' : 'Clique no ícone de lupa para ativar o zoom'}
+                      </>
+                    )}
                     {allMedia.length > 1 && ' • Use as setas para navegar'}
                   </span>
                 </div>

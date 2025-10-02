@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import database from '@/lib/database'
 
 export async function GET() {
   try {
-    const brands = await prisma.brands.findMany({
-      where: { is_active: true },
-      orderBy: { name: 'asc' }
-    })
+    const brands = await database.query(
+      'SELECT * FROM brands WHERE is_active = 1 ORDER BY name ASC'
+    )
 
     return NextResponse.json({
       success: true,
@@ -21,7 +18,5 @@ export async function GET() {
       error: 'Erro interno do servidor',
       data: []
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect();
   }
 }

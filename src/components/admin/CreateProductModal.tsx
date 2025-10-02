@@ -44,6 +44,7 @@ interface ProductFormData {
   stock_quantity: string;
   min_stock_level: string;
   brand_id: string;
+  // category_id removido do formulário (não utilizado)
   model_id: string;
 }
 
@@ -55,6 +56,7 @@ export default function CreateProductModal({ isOpen, onClose, onSuccess }: Creat
   
   // Dados para selects
   const [brands, setBrands] = useState<Brand[]>([]);
+  // Não usamos categorias no formulário
   const [models, setModels] = useState<Model[]>([]);
   
   // Estado do formulário
@@ -219,7 +221,7 @@ export default function CreateProductModal({ isOpen, onClose, onSuccess }: Creat
         throw new Error(productResult.error || 'Erro ao criar produto');
       }
 
-      const productId = productResult.product.id;
+      const productId = productResult?.product?.id || productResult?.data?.id;
 
       // Upload de imagens se houver
       if (images.length > 0) {

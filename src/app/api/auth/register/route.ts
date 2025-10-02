@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { createUser, getUserByEmail, createVerificationToken } from '@/lib/database';
+import database from '@/lib/database';
 import { sendVerificationEmail } from '@/lib/email';
 import crypto from 'crypto';
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se o usuário já existe
-    const existingUser = await getUserByEmail(email.toLowerCase());
+    const existingUser = await database.getUserByEmail(email.toLowerCase());
     if (existingUser) {
       return NextResponse.json(
         { success: false, message: 'E-mail já cadastrado' },
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Criar usuário
-    const userResult = await createUser({
+    const userResult = await database.createUser({
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: hashedPassword,
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     // Gerar token de verificação
     const verificationToken = crypto.randomBytes(32).toString('hex');
-    await createVerificationToken(userId, verificationToken);
+    await database.createVerificationToken(userId, verificationToken);
 
     // Enviar e-mail de verificação
     await sendVerificationEmail({

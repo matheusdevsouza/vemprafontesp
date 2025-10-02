@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: "Não autorizado" }, { status: 401 });
     }
 
-    const addresses = await query(`
+    const addresses = await database.query(`
       SELECT * FROM addresses 
       WHERE user_id = ? 
       ORDER BY is_default DESC, created_at DESC
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Não autorizado" }, { status: 401 });
     }
 
-    const user = await query(`SELECT * FROM users WHERE id = ? AND is_active = 1`, [userPayload.userId]);
+    const user = await database.query(`SELECT * FROM users WHERE id = ? AND is_active = 1`, [userPayload.userId]);
 
     if (!user || user.length === 0) {
       return NextResponse.json({ message: "Usuário não encontrado" }, { status: 404 });
@@ -54,15 +54,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Se for o primeiro endereço, definir como padrão
-    const existingAddresses = await query(`SELECT COUNT(*) as count FROM addresses WHERE user_id = ?`, [userPayload.userId]);
+    const existingAddresses = await database.query(`SELECT COUNT(*) as count FROM addresses WHERE user_id = ?`, [userPayload.userId]);
     const isDefault = existingAddresses[0].count === 0;
 
-    const address = await query(`
+    const address = await database.query(`
       INSERT INTO addresses (user_id, name, street, number, complement, neighborhood, city, state, zip_code, is_default, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     `, [userPayload.userId, name || null, street, number, complement || null, neighborhood, city, state.toUpperCase(), zip_code, isDefault]);
 
-    const newAddress = await query(`SELECT * FROM addresses WHERE id = LAST_INSERT_ID()`);
+    const newAddress = await database.query(`SELECT * FROM addresses WHERE id = LAST_INSERT_ID()`);
     return NextResponse.json(newAddress[0], { status: 201 });
   } catch (error) {
     console.error("Erro ao criar endereço:", error);

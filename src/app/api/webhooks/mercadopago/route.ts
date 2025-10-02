@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/database';
+import database from '@/lib/database';
 import { sendPaymentConfirmationEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
           paymentStatus = 'pending';
       }
       
-      await query(`
+      await database.query(`
         UPDATE orders 
         SET 
           status = ?,
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       if (paymentStatus === "paid" && orderStatus === "processing") {
         try {
           // Buscar dados do pedido para enviar email
-          const orderData = await query(`
+          const orderData = await database.query(`
             SELECT o.*, oi.product_name, oi.quantity, oi.unit_price
             FROM orders o
             LEFT JOIN order_items oi ON o.id = oi.order_id

@@ -14,7 +14,7 @@ export async function GET(
       }, { status: 400 })
     }
     
-    const result = await query(`
+    const result = await database.query(`
       SELECT image_blob, image_mime_type, image_size 
       FROM models 
       WHERE id = ? AND use_blob = TRUE
