@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateUser } from "@/lib/auth";
-import { query, transaction } from "@/lib/database";
+import database from "@/lib/database";
 
 // GET - Listar endereços do usuário
 export async function GET(request: NextRequest) {

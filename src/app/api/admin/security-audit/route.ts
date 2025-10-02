@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`🔍 [SECURITY AUDIT] Iniciado por admin: ${user.id}`);
+    console.log(`🔍 [SECURITY AUDIT] Iniciado por admin: ${user.userId}`);
 
     // Executar auditoria de segurança
     const auditReport = await runSecurityAudit();

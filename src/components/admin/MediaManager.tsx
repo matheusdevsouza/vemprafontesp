@@ -253,7 +253,7 @@ export default function MediaManager({ productId, onMediaUpdate }: MediaManagerP
             <CustomVideoPlayer
               src={item.url}
               thumbnail={item.thumbnailUrl}
-              alt={item.altText}
+              alt={item.altText || ''}
               className="w-full h-full"
             />
           </div>
@@ -381,7 +381,7 @@ export default function MediaManager({ productId, onMediaUpdate }: MediaManagerP
                 <CustomVideoPlayer
                   src={selectedMedia.url}
                   thumbnail={selectedMedia.thumbnailUrl}
-                  alt={selectedMedia.altText}
+                  alt={selectedMedia.altText || ''}
                   className="max-w-full h-auto"
                 />
               )}

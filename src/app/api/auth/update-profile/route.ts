@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateUser, isAuthenticated } from "@/lib/auth";
-import { getUserById, getPool, query } from "@/lib/database";
+import database from "@/lib/database";
 import { encryptForDatabase } from "@/lib/transparent-encryption";
 
 export async function PATCH(request: NextRequest) {
@@ -18,7 +18,7 @@ export async function PATCH(request: NextRequest) {
     console.log("User ID:", userId);
     console.log("Data received:", data);
 
-    const user = await getUserById(userId);
+    const user = await database.getUserById(userId);
     if (!user) {
       return NextResponse.json({ success: false, message: "Usuário não encontrado" }, { status: 404 });
     }
@@ -63,7 +63,7 @@ export async function PATCH(request: NextRequest) {
     updateValues.push(userId);
 
     // Preparar dados para criptografia transparente
-    const updateData = {};
+    const updateData: any = {};
     const originalValues = [...updateValues];
     
     if (name !== undefined) updateData.name = name;
@@ -89,11 +89,11 @@ export async function PATCH(request: NextRequest) {
     console.log("SQL Query:", sql);
     console.log("Values:", updateValues);
 
-    const pool = getPool();
-    const result = await pool.database.query(sql, updateValues);
+    const pool = database.getPool();
+    const [result] = await pool.execute(sql, updateValues);
     console.log("Update result:", result);
 
-    const updatedUser = await getUserById(userId);
+    const updatedUser = await database.getUserById(userId);
     console.log("Updated user:", updatedUser);
 
     return NextResponse.json({ success: true, user: updatedUser });

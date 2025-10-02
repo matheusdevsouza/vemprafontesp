@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { query } from './database';
+import database from './database';
 
 /**
  * Sistema de Auditoria de Segurança Avançado
@@ -62,7 +62,7 @@ export async function testEncryption(): Promise<SecurityAuditResult> {
 export async function checkUnencryptedSensitiveData(): Promise<SecurityAuditResult> {
   try {
     // Verificar se há CPFs ou emails em texto plano
-    const sensitiveData = await query(`
+    const sensitiveData = await database.query(`
       SELECT COUNT(*) as count 
       FROM orders 
       WHERE customer_cpf IS NOT NULL 
@@ -106,8 +106,8 @@ export async function testSQLInjectionProtection(): Promise<SecurityAuditResult>
     // Teste básico de SQL injection
     const maliciousInput = "'; DROP TABLE orders; --";
     
-    // Tentar executar uma query com input malicioso
-    const result = await query(
+    // Tentar executar uma database.query com input malicioso
+    const result = await database.query(
       'SELECT COUNT(*) as count FROM orders WHERE id = ?',
       [maliciousInput]
     );
@@ -172,7 +172,7 @@ export async function checkAuditLogging(): Promise<SecurityAuditResult> {
 export async function checkPasswordSecurity(): Promise<SecurityAuditResult> {
   try {
     // Verificar se há senhas em texto plano
-    const users = await query(`
+    const users = await database.query(`
       SELECT COUNT(*) as count 
       FROM users 
       WHERE password IS NOT NULL 
@@ -214,7 +214,7 @@ export async function checkPasswordSecurity(): Promise<SecurityAuditResult> {
 export async function checkTestDataInProduction(): Promise<SecurityAuditResult> {
   try {
     // Verificar se há dados de teste
-    const testData = await query(`
+    const testData = await database.query(`
       SELECT COUNT(*) as count 
       FROM orders 
       WHERE customer_email LIKE '%@test.com' 

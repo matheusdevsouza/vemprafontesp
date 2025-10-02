@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 import { applySimpleRateLimit } from '@/lib/simple-rate-limiter'
 import { validateCSRFRequest, createCSRFResponse } from '@/lib/csrf-protection'
-import { query } from '@/lib/database'
+import database from '@/lib/database'
 
 // Configuração do transporter de e-mail
 const createTransporter = () => {

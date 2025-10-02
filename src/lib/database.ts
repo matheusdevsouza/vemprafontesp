@@ -1246,6 +1246,7 @@ const originalQuery = query;
 const database = { 
   query: queryWithEncryption, 
   transaction, 
+  getPool,
   getProducts, 
   getProductById, 
   getAvailableColors,
@@ -1266,9 +1267,14 @@ const database = {
   getOrderItems,
   getOrderById,
   createUser,
+  getUserById,
   getUserByEmail,
   createVerificationToken,
   updateUserLastLogin
 }
+
+// Exportações individuais para compatibilidade
+export { queryWithEncryption as query };
+export { getUserByEmail };
 
 export default database 

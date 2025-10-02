@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateUser } from "@/lib/auth";
-import { query, transaction } from "@/lib/database";
+import database from "@/lib/database";
 
 // PUT - Definir endereço como padrão
 export async function PUT(
@@ -36,7 +36,7 @@ export async function PUT(
     }
 
     // Usar transação para garantir consistência
-    await transaction([
+    await database.transaction([
       {
         sql: `UPDATE addresses SET is_default = 0 WHERE user_id = ?`,
         params: [userPayload.userId]
