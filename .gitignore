@@ -303,13 +303,13 @@ capacitor.config.backup.*
 *.sketch
 *.fig
 
-# Vídeos
-*.mp4
-*.avi
-*.mov
-*.wmv
-*.flv
-*.webm
+# Vídeos (removido para permitir uploads de produtos)
+# *.mp4
+# *.avi
+# *.mov
+# *.wmv
+# *.flv
+# *.webm
 
 # ===========================================
 # 🚨 REGRAS ESPECÍFICAS DO PROJETO
