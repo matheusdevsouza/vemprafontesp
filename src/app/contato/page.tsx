@@ -1,6 +1,6 @@
 'use client'
 
-import { FaInstagram, FaFacebookF, FaTwitter, FaYoutube, FaWhatsapp, FaPhoneAlt, FaEnvelope, FaMapMarkerAlt, FaClock } from 'react-icons/fa'
+import { FaInstagram, FaFacebookF, FaTwitter, FaYoutube, FaWhatsapp, FaPhoneAlt, FaEnvelope, FaClock } from 'react-icons/fa'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -105,15 +105,6 @@ const ContatoSkeleton = () => (
       </div>
     </div>
 
-    {/* Skeleton do mapa */}
-    <div className="max-w-5xl mx-auto mt-12">
-      <div className="h-8 bg-gray-700 rounded w-48 mx-auto mb-4 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 animate-shimmer"></div>
-      </div>
-      <div className="w-full h-72 md:h-96 bg-gray-700 rounded-2xl relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 animate-shimmer"></div>
-      </div>
-    </div>
   </div>
 );
 
@@ -182,7 +173,7 @@ export default function Contato() {
             <FaEnvelope className="text-primary-500 mb-2" size={28} />
             <span className="font-semibold text-lg text-white mb-1">E-mail</span>
             <span className="text-gray-400 text-sm">Resposta em até 7 dias</span>
-            <a href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'contato@example.com'}`} className="text-gray-300 text-base mt-1 hover:text-primary-500 underline-offset-4 transition-colors">{process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'contato@example.com'}</a>
+            <a href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'contato@vemprafontesp.com.br'}`} className="text-gray-300 text-base mt-1 hover:text-primary-500 underline-offset-4 transition-colors">{process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'contato@vemprafontesp.com.br'}</a>
           </motion.div>
           <motion.div 
             initial={{ opacity: 0, y: 20 }} 
@@ -224,28 +215,6 @@ export default function Contato() {
         </motion.section>
       </div>
       
-      {/* Mapa da loja */}
-      <motion.div 
-        className="max-w-5xl mx-auto mt-12"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.3 }}
-      >
-        <h2 className="text-2xl font-semibold mb-4 text-white text-center">Nossa Localização</h2>
-        <div className="w-full h-72 md:h-96 rounded-2xl overflow-hidden shadow-lg">
-          <iframe
-            title="Mapa da loja"
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3656.879234234234!2d-46.7244016!3d-23.3279532!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x94cee6a7cb6f61eb%3A0xa321d69e795bf8a6!2sFranco%20da%20Rocha%2C%20SP!5e0!3m2!1spt-BR!2sbr!4v1680000000000!5m2!1spt-BR!2sbr&style=element:labels%7Cvisibility:off"
-            width="100%"
-            height="100%"
-            style={{ border: 0 }}
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            className="w-full h-72 md:h-96 rounded-2xl"
-          ></iframe>
-        </div>
-      </motion.div>
     </div>
   )
 } 
