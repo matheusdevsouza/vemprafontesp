@@ -163,23 +163,27 @@ export async function POST(request: NextRequest) {
     // Criar pedido no banco
     const orderResult = await database.query(
       `INSERT INTO orders (
-        order_number, user_id, status, payment_status, 
-        customer_name, customer_email, customer_phone, customer_cpf, shipping_address, 
-        subtotal, shipping_cost, total_amount
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        user_id, order_number, status, payment_status, payment_method,
+        subtotal, shipping_cost, tax_amount, discount_amount, total_amount, currency,
+        customer_name, customer_email, customer_phone, customer_cpf, shipping_address
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        orderNumber,
         user?.userId || null,
+        orderNumber,
         'pending',
         'pending',
+        'Mercado Pago',
+        subtotal,
+        shippingCost || 0.00,
+        0.00, // tax_amount
+        0.00, // discount_amount
+        total,
+        'BRL', // currency
         orderData.customer_name,
         orderData.customer_email,
         orderData.customer_phone,
         orderData.customer_cpf,
-        orderData.shipping_address,
-        subtotal,
-        shippingCost || 0.00,
-        total
+        orderData.shipping_address
       ]
     );
 
@@ -188,8 +192,19 @@ export async function POST(request: NextRequest) {
     // Inserir items do pedido
     for (const item of orderItems) {
       await database.query(
-        'INSERT INTO order_items (order_id, product_id, quantity, unit_price, total_price, product_name) VALUES (?, ?, ?, ?, ?, ?)',
-        [orderId, item.product_id, item.quantity, item.price, item.total, item.product_name || 'Produto']
+        'INSERT INTO order_items (order_id, product_id, variant_id, product_name, product_sku, size, color, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          orderId, 
+          item.product_id, 
+          null, // variant_id
+          item.product_name || 'Produto', 
+          null, // product_sku
+          null, // size
+          null, // color
+          item.quantity, 
+          item.price, 
+          item.total
+        ]
       );
     }
 

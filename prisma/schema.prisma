@@ -9,16 +9,16 @@ datasource db {
 
 model User {
   id                Int               @id @default(autoincrement())
-  name              String            @db.VarChar(255)
-  email             String            @unique(map: "email") @db.VarChar(255)
+  name              String            @db.VarChar(500)
+  email             String            @unique(map: "email") @db.VarChar(500)
   email_verified_at DateTime?         @db.Timestamp(0)
   password          String?           @db.VarChar(255)
-  phone             String?           @db.VarChar(20)
-  cpf               String?           @db.VarChar(14)
+  phone             String?           @db.VarChar(500)
+  cpf               String?           @db.VarChar(500)
   birth_date        DateTime?         @db.Date
   gender            users_gender?
   address           String?           @db.Text
-  display_name      String?           @db.VarChar(255)
+  display_name      String?           @db.VarChar(500)
   is_active         Boolean?          @default(true)
   last_login        DateTime?         @db.Timestamp(0)
   createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamp(0)
@@ -118,9 +118,9 @@ model Order {
   total_amount       Decimal                @db.Decimal(10, 2)
   currency           String?                @default("BRL") @db.VarChar(3)
   customer_name      String?                @db.VarChar(255)
-  customer_email     String?                @db.VarChar(255)
-  customer_phone     String?                @db.VarChar(20)
-  customer_cpf       String?                @db.VarChar(14)
+  customer_email     String?                @db.VarChar(500)
+  customer_phone     String?                @db.VarChar(500)
+  customer_cpf       String?                @db.VarChar(500)
   shipping_address   String?                @db.Text
   notes              String?                @db.Text
   shipped_at         DateTime?              @db.Timestamp(0)
@@ -229,14 +229,14 @@ model Model {
 model addresses {
   id           Int      @id @default(autoincrement())
   user_id      Int
-  name         String?  @db.VarChar(100)
-  street       String   @db.VarChar(255)
-  number       String   @db.VarChar(20)
-  complement   String?  @db.VarChar(100)
-  neighborhood String   @db.VarChar(100)
-  city         String   @db.VarChar(100)
-  state        String   @db.VarChar(2)
-  zip_code     String   @db.VarChar(10)
+  name         String?  @db.VarChar(500)
+  street       String   @db.VarChar(500)
+  number       String   @db.VarChar(500)
+  complement   String?  @db.VarChar(500)
+  neighborhood String   @db.VarChar(500)
+  city         String   @db.VarChar(500)
+  state        String   @db.VarChar(10)
+  zip_code     String   @db.VarChar(500)
   is_default   Boolean? @default(false)
   created_at   DateTime @default(now()) @db.Timestamp(0)
   updated_at   DateTime @default(now()) @db.Timestamp(0)
