@@ -700,6 +700,7 @@ export default function OrderDetailPage() {
                   {dataToReveal === 'email' && 'Solicitação para revelar email do cliente'}
                   {dataToReveal === 'phone' && 'Solicitação para revelar telefone do cliente'}
                   {dataToReveal === 'cpf' && 'Solicitação para revelar CPF do cliente'}
+                  {dataToReveal === 'address' && 'Solicitação para revelar endereço de entrega do cliente'}
                 </p>
               </div>
               <button

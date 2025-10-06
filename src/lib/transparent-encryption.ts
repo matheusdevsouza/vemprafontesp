@@ -119,7 +119,7 @@ export function decryptObject(obj: any, fieldsToDecrypt: string[]): any {
  */
 export const ENCRYPTION_FIELDS = {
   users: ['email', 'phone', 'address'],
-  orders: ['customer_email', 'customer_phone', 'customer_cpf'],
+  orders: ['customer_email', 'customer_phone', 'customer_cpf', 'shipping_address'],
   // Adicione outras tabelas conforme necessário
 };
 
